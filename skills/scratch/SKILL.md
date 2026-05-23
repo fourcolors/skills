@@ -1,59 +1,55 @@
 ---
 name: scratch
-description: Convention for the project's `.scratch/` folder (ad-hoc executable scripts, review notes, pipeline outputs). Use when the user asks what `.scratch/` is for, how to activate the bootstrap hook, or how the promotion ladder works. Full rules live in `.scratch/README.md`; this skill is metadata + activation.
+description: Use when the user asks what a project `.scratch/` folder is for, wants a safe place for temporary scripts/artifacts, or needs guidance on promoting ad-hoc work into committed project code.
 ---
 
-# .scratch Skill
+# scratch
 
-This skill bootstraps the project's `.scratch/` folder. The canonical convention text lives in `.scratch/README.md` (copied from `.claude/skills/scratch/templates/README.md` on first run). The hook ensures the folder and README exist on every session start; the README explains the rules. This split keeps SKILL.md cheap to load — the prose only costs tokens when the folder is actively being touched.
+A lightweight convention for a project's `.scratch/` folder.
 
-## Activation (per user)
+Use `.scratch/` for temporary, project-local work that is useful during development but should not yet live in the main codebase.
 
-The bootstrap hook is opt-in. Add the following four entries to your `.claude/settings.local.json` under `hooks.SessionStart`:
+## What belongs in `.scratch/`
 
-```json
-{
-  "matcher": "startup",
-  "hooks": [
-    { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ensure-scratch.sh" }
-  ]
-},
-{
-  "matcher": "clear",
-  "hooks": [
-    { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ensure-scratch.sh" }
-  ]
-},
-{
-  "matcher": "compact",
-  "hooks": [
-    { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ensure-scratch.sh" }
-  ]
-},
-{
-  "matcher": "resume",
-  "hooks": [
-    { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ensure-scratch.sh" }
-  ]
-}
-```
+- One-off scripts for investigation or migration
+- Review notes and spike notes
+- Generated reports or pipeline outputs
+- Screenshots, HTML prototypes, JSON dumps, and other temporary artifacts
+- Failed-run evidence that is useful while debugging
 
-All four matchers (`startup`, `clear`, `compact`, `resume`) cover every SessionStart event.
+## Rules
 
-## Manual bootstrap
+1. **Idempotent by default** — scripts should be safe to rerun.
+2. **Clean on green** — delete one-off scripts after they succeed, unless the output is useful evidence.
+3. **Keep failed evidence while debugging** — failed scripts/logs can stay until the issue is resolved.
+4. **Promote reused work** — if a script or artifact becomes useful twice, move it to `bin/`, `scripts/`, `docs/`, tests, or a real module.
+5. **No secrets** — never put `.env`, credentials, tokens, private keys, or customer data in `.scratch/`.
 
-To run the bootstrap once without enabling the hook:
+## How to use it
+
+When working in a project:
+
+1. Put throwaway scripts and generated outputs under `.scratch/`.
+2. Give files descriptive names.
+3. Make scripts rerunnable from the project root where practical.
+4. Before finishing, decide whether each artifact should be deleted, kept as evidence, or promoted.
+
+## Bootstrap
+
+If `.scratch/README.md` is missing, create it from this skill's template if available:
 
 ```bash
-bash .claude/hooks/ensure-scratch.sh
+mkdir -p .scratch
+cp .claude/skills/scratch/templates/README.md .scratch/README.md
 ```
 
-If `.scratch/` already exists, this silently backfills `README.md` from the template. If `.scratch/` is missing, the script prints a prompt asking where you want the folder — confirm with the user, then create the folder and copy the template manually.
+If the skill is installed globally instead of project-locally, copy the template manually from the installed skill directory or write the rules above into `.scratch/README.md`.
 
-## What lives where
+## Output style
 
-- `.claude/skills/scratch/templates/README.md` — canonical README content (committed).
-- `.claude/hooks/ensure-scratch.sh` — the bootstrap script (committed).
-- `.claude/hooks/test-ensure-scratch.sh` — test harness (committed).
-- `.scratch/README.md` — written copy of the template (gitignored).
-- `.claude/settings.local.json` — your personal hook activation (gitignored).
+When applying this skill, be practical and concise:
+
+- state whether `.scratch/` exists,
+- say what should go there,
+- recommend what to delete, keep, or promote,
+- and call out any secrets or long-lived decisions that should not be in `.scratch/`.
