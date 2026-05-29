@@ -47,6 +47,51 @@ To prevent prompt bloat and keep context windows highly efficient:
 
 ---
 
+## Development & Execution Lifecycle
+
+This diagram illustrates how all the packaged skills (`html-discussion`, `ping-pong`, `subagent-memory`, and `scratch`) and custom slash commands (`/discussion`, `/crystallize`) coordinate dynamically throughout your system development process:
+
+```mermaid
+graph TD
+    subgraph Planning ["1. Scaffolding & Planning (HTML-Discussion)"]
+        A["/discussion &lt;slug&gt;"] -->|Scaffold Draft| B["docs/discussions/&lt;date&gt;-&lt;slug&gt;.html"]
+        B -->|Append components via bin/ scripts| C["Add comparison tables, grids, KPIs"]
+        C -->|Decisions made| D["/crystallize &lt;slug&gt;"]
+        D -->|Propose spec changes| E["Update docs/architecture.html & features/"]
+    end
+
+    subgraph Implementation ["2. Pair Programming Loop (Ping-Pong & Subagent Memory)"]
+        E -->|Team Lead dispatches Scenario Trio| F["pp-ping (Navigator)"]
+        F -->|Discover test suite & write FAILING test| G["RED State (In-place Spec)"]
+        G -->|Driver takes over| H["pp-pong (Driver)"]
+        H -->|Implement code until tests pass| I["GREEN State (Passing Test)"]
+        I -->|Audit is triggered| J["pp-auditor (Sanity Check)"]
+        J -->|5-Axis Check: On task, Correct, Right, Smart, Extra mile| K{"Audit PASS?"}
+        K -->|FAIL| L["Re-dispatch ping (spec gap) or pong (impl gap)"]
+        L --> F
+        K -->|PASS| M["Merge and update GOAL.md"]
+        F -.->|Dated bullets| Memory["subagent-memory (MEMORY.md)"]
+        H -.->|Dated bullets| Memory
+        J -.->|Dated bullets| Memory
+    end
+
+    subgraph Shipping ["3. Traceability & Ship"]
+        M -->|All scenarios completed| N["/discussion ship &lt;slug&gt;"]
+        N -->|Manifest updated to shipped| O["Stamp shipped_at & shipped_commit"]
+        O -->|Re-indexing| P["docs/discussions/INDEX.html Rebuilt"]
+        P -->|Executable provenance| Q["@scope:&lt;slug&gt; tags remain on features forever"]
+    end
+
+    classDef planning fill:#25252e,stroke:#d4a853,stroke-width:2px,color:#fff;
+    classDef impl fill:#1e1e26,stroke:#60a5fa,stroke-width:2px,color:#fff;
+    classDef ship fill:#14141a,stroke:#4ade80,stroke-width:2px,color:#fff;
+    class A,B,C,D,E planning;
+    class F,G,H,I,J,K,L,M,Memory impl;
+    class N,O,P,Q ship;
+```
+
+---
+
 ## Repository Layout
 
 ```text
