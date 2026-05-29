@@ -1,0 +1,32 @@
+<!-- _decision-asks — bespoke 3-decision card block for path-b-livekit-room.html.
+     Uses the .decision-card / .opts / .opt classes shipped by the acme theme shell. -->
+<div>
+  <div class="decision-card">
+    <div class="q">Q1 · Spike kickoff — now or after the ReservHotel Phase G unblock?</div>
+    <p>The spike is 1 day. ReservHotel Phase G (real submission, widget-as-concierge) is the bigger production unblock but is parked pending design work. Doing the spike first lets us know whether path B is viable; doing Phase G first gets us closer to actual customer ship.</p>
+    <div class="opts">
+      <div class="opt"><strong>A.</strong> Spike now (1 day) → derisk path B early</div>
+      <div class="opt"><strong>B.</strong> ReservHotel Phase G first → then spike</div>
+      <div class="opt"><strong>C.</strong> Both in parallel (different agents)</div>
+    </div>
+  </div>
+
+  <div class="decision-card">
+    <div class="q">Q2 · Spike rigor — Elixir-only, full-stack, or both?</div>
+    <p>Option A is cheaper and answers the riskiest question; B costs more but proves the full stack.</p>
+    <div class="opts">
+      <div class="opt"><strong>A.</strong> Just the Elixir MCP RPC + worker tool-call round-trip (no browser, no real LiveKit room)</div>
+      <div class="opt"><strong>B.</strong> Full-stack: real browser opens real LiveKit room and triggers a tool call</div>
+      <div class="opt"><strong>C.</strong> A first; only escalate to B if A flushes out unknowns we didn't predict</div>
+    </div>
+  </div>
+
+  <div class="decision-card">
+    <div class="q">Q3 · Tool-catalog source-of-truth — wire to MCP.tool_groups/0 or hardcode in the server?</div>
+    <p>Today <code class="inline">MCP.tool_groups/0</code> returns <code class="inline">[]</code> with a comment "populated as workflows ship." Path B forces the question: does the catalog get derived from <code class="inline">Workflow.RoomBooking.definition/0</code> at startup, or do we hand-maintain a separate <code class="inline">MCP.Tools</code> module that lists every tool?</p>
+    <div class="opts">
+      <div class="opt"><strong>A.</strong> Derive from workflow definitions (single source of truth; arch §3.4-014 already implies this)</div>
+      <div class="opt"><strong>B.</strong> Hand-maintain MCP.Tools module (looser coupling; explicit MCP-vs-workflow split)</div>
+    </div>
+  </div>
+</div>

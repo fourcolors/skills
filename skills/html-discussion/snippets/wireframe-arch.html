@@ -1,0 +1,32 @@
+<!-- wireframe-arch — §03 content-baked architecture wireframe. Four-tier vertical layout
+     with semantic left-border colors: accent (skill), cool (scripts), good (data), decision (output). -->
+<div class="wireframe">
+  <div class="wf-row">
+    <div class="wf-box wf-skill">
+      SKILL.md &nbsp;<span style="font-weight: 400; color: var(--text-dim);">(~2 KB)</span>
+      <span class="wf-note">when to invoke · command surface · 4-step workflow</span>
+    </div>
+  </div>
+  <div class="wf-flow"><span>↓ &nbsp; Claude runs Bash &nbsp; ↓</span></div>
+  <div class="wf-row">
+    <div class="wf-box wf-script">
+      bin/ &nbsp;<span style="font-weight: 400; color: var(--text-dim);">— shell scripts</span>
+      <span class="wf-note">new-page · add-section · list · move · render &nbsp;<em>(+ swap · copy · paste · replace · save-snippet by promotion)</em></span>
+    </div>
+  </div>
+  <div class="wf-flow"><span>↓ reads snippets</span><span>↓ reads theme</span><span>↓ writes output</span></div>
+  <div class="wf-row wf-row-3">
+    <div class="wf-box wf-data">
+      snippets/
+      <span class="wf-note">_shell.html · header · numbered-section · kpi-strip · compare-table-* · is-isnt-cards · wireframe-arch · callout · decisions-resolved · …</span>
+    </div>
+    <div class="wf-box wf-data">
+      themes/
+      <span class="wf-note">warm-paper.css <em>(default)</em><br>plex-paper.css<br>dark-blueprint.css</span>
+    </div>
+    <div class="wf-box wf-out">
+      .scratch/
+      <span class="wf-note">&lt;slug&gt;.html &nbsp;◄&nbsp; render<br>&lt;slug&gt;.json &nbsp;◄&nbsp; source of truth<br>.stash/&lt;name&gt;.html &nbsp;◄&nbsp; cross-page clipboard</span>
+    </div>
+  </div>
+</div>

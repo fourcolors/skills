@@ -1,0 +1,54 @@
+<!-- _spike-detail — bespoke spike-scope block for path-b-livekit-room.html.
+     Three-pane layout: scope (what we build), assertions (what proves it works),
+     kill criteria (what makes us pivot). -->
+<style>
+  .pb-spike { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 16px 0 8px; }
+  @media (max-width: 900px) { .pb-spike { grid-template-columns: 1fr; } }
+  .pb-spike .pb-pane { padding: 18px; border-radius: 10px; background: var(--surface-1, #1a1a1a); border-top: 3px solid var(--accent, #c9a961); }
+  .pb-spike .pb-pane h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent, #c9a961); margin: 0 0 12px 0; font-weight: 700; }
+  .pb-spike .pb-pane.pb-kill { border-top-color: #b85a4a; }
+  .pb-spike .pb-pane.pb-kill h3 { color: #b85a4a; }
+  .pb-spike .pb-pane.pb-assert { border-top-color: #5a8a6a; }
+  .pb-spike .pb-pane.pb-assert h3 { color: #5a8a6a; }
+  .pb-spike ul { margin: 0; padding-left: 18px; }
+  .pb-spike li { font-size: 13.5px; line-height: 1.55; margin-bottom: 10px; color: var(--text, #f4f0e8); }
+  .pb-spike li code { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 12px; background: rgba(201, 169, 97, 0.08); padding: 1px 5px; border-radius: 3px; color: var(--accent, #c9a961); }
+  .pb-spike .pb-pane-budget { font-size: 12px; color: var(--text-dim, #8a8278); margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+</style>
+
+<div class="pb-spike">
+
+  <div class="pb-pane">
+    <h3>Scope · what we build</h3>
+    <ul>
+      <li>Minimal <code>POST /mcp/v1/rpc</code> Plug endpoint speaking JSON-RPC 2.0. Handles <code>initialize</code>, <code>tools/list</code>, <code>tools/call</code>. Bearer-token auth via existing <code>MCPAuth</code> plug.</li>
+      <li>One tool: <code>narrate</code>. Tool definition derived from a hardcoded list (catalog wiring is a path-B-proper task, not a spike-task).</li>
+      <li>Worker: extend <code>test_hub_agent.py</code> with one test that builds <code>MCPToolset(url=http://localhost:4000/mcp/v1/rpc)</code>, instantiates HubAgent with it, drives one turn.</li>
+      <li>Elixir-side: log the inbound JSON-RPC call so we can prove it landed. No FSM transitions, no Session writes.</li>
+    </ul>
+    <div class="pb-pane-budget">Budget: 1 working day (~6 hrs). Scope-creep guard: if you find yourself wiring real tool dispatch, stop — that's path B proper.</div>
+  </div>
+
+  <div class="pb-pane pb-assert">
+    <h3>Success · what proves it</h3>
+    <ul>
+      <li>Worker spawns. <code>MCPToolset</code> connects to the Elixir endpoint without protocol error.</li>
+      <li>The cascaded session, prompted to <em>"say hello using narrate"</em>, invokes the tool. We see the <code>tools/call</code> arrive Elixir-side in logs.</li>
+      <li>The Elixir handler responds with a synthetic result; the worker LLM receives it and the next turn references it (proving the round-trip closes).</li>
+      <li>One new Elixir test + one new Python test, both green. Suite stays at 1349+ / 0.</li>
+    </ul>
+    <div class="pb-pane-budget">If all four hold: path B is GO; cut the goal file. If only 1-2 hold: capture the gap and decide whether to fix in path B scope or escalate.</div>
+  </div>
+
+  <div class="pb-pane pb-kill">
+    <h3>Kill · what makes us pivot</h3>
+    <ul>
+      <li>Streamable-HTTP handshake from LiveKit <code>MCPServerHTTP</code> doesn't complete in 2 hrs of debug time. Pivot: investigate FastAPI sidecar that proxies HTTP→BEAM via Erlang Distribution / native messaging.</li>
+      <li>LiveKit MCP transport version we implement is incompatible with the JS SDK's. Pivot: pin the exact spec version + re-cut the spike against it.</li>
+      <li>Bearer-auth pattern doesn't survive the LiveKit dispatch flow (workers expect a token that we control). Pivot: design a token-mint endpoint inside the spike.</li>
+      <li>Cost / latency of the round-trip blows the voice-budget (>200ms p50 for a local tool call). Pivot: investigate Phoenix.Channels-over-LiveKit-DataChannels instead of HTTP RPC.</li>
+    </ul>
+    <div class="pb-pane-budget">Any kill triggers a re-plan thread — the spike yields signal either way.</div>
+  </div>
+
+</div>

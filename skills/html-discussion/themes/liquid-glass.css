@@ -1,0 +1,174 @@
+/* liquid-glass — Dark-first; gold-accented; Cormorant Garamond + DM Sans + JetBrains Mono.
+   An elegant glassmorphism dark theme suitable for highly modern technical and system design pages. */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --bg:                 #0a0a0f;  /* flow-bg — deep near-black */
+  --surface:            #1e1e26;  /* flow-bg-browser */
+  --surface2:           #14141a;  /* between bg and surface — recessed */
+  --surface-elevated:   #25252e;  /* slightly warmer/lighter than surface */
+  --border:             rgba(255, 255, 255, 0.10);  /* flow-line */
+  --border-bright:      rgba(255, 255, 255, 0.15);  /* flow-line-3 */
+  --text:               rgba(255, 255, 255, 0.92);  /* flow-ink */
+  --text-dim:           rgba(255, 255, 255, 0.65);  /* flow-ink-65 */
+
+  /* Brand: gold is the primary accent */
+  --accent:             #d4a853;                          /* flow-gold */
+  --accent-dim:         rgba(212, 168, 83, 0.15);         /* flow-gold-a15 */
+
+  /* Semantic roles map to Acme's signature signals */
+  --good:               #4ade80;                          /* flow-live-green — prices, live, success */
+  --good-dim:           rgba(74, 222, 128, 0.10);
+
+  --cool:               #60a5fa;                          /* flow-guest-blue — links, guest-facing */
+  --cool-dim:           rgba(96, 165, 250, 0.10);
+
+  --warn:               #ff9500;                          /* flow-di-orange */
+  --warn-dim:           rgba(255, 149, 0, 0.10);
+
+  --decision:           #ff3b30;                          /* flow-danger — destructive, decline */
+  --decision-dim:       rgba(255, 59, 48, 0.10);
+}
+
+/* acme is dark-first only — no prefers-color-scheme override. The brand IS dark. */
+
+/* === Apple Liquid Glass — true to iOS 26 / macOS 26 ===
+   The material has four ingredients that matter, in order of importance:
+   (1) STRONG top-edge specular highlight — bright white inset shadow, this is what reads as "glass"
+   (2) LIGHT blur + moderate translucency — content underneath stays visible, not frosted to mush
+   (3) Linear top-to-bottom gradient ON the surface — creates the "curved lens" feel
+   (4) Vibrant, saturated wallpaper underneath — gives the blur something to refract */
+
+body {
+  /* Wallpaper stays in the brand's hue family: gold primary, gold-ink warm-pale secondary,
+     a small touch of guest-blue (the only cool tone in acme_tokens.css) for harmonic
+     variation, and a deeper gold wash at the bottom for warmth balance. No off-brand hues. */
+  background:
+    radial-gradient(ellipse 1200px 800px at 18% -5%,  rgba(212, 168, 83, 0.45) 0%, transparent 55%),    /* gold primary */
+    radial-gradient(ellipse 900px 700px  at 82% 28%,  rgba(212, 197, 160, 0.22) 0%, transparent 50%),  /* gold-ink */
+    radial-gradient(ellipse 600px 500px  at 78% 78%,  rgba(96, 165, 250, 0.12) 0%, transparent 50%),    /* subtle guest-blue */
+    radial-gradient(ellipse 1100px 800px at 50% 110%, rgba(212, 168, 83, 0.32) 0%, transparent 55%),    /* gold secondary */
+    var(--bg);
+}
+
+.card,
+.kpi,
+.decision-card,
+.wireframe,
+.callout,
+table.compare {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%),
+    rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),   /* TOP RIM LIGHT — the signature */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04),  /* faint bottom edge */
+    inset 0 0 30px rgba(255, 255, 255, 0.03),  /* gentle interior glow */
+    0 12px 32px rgba(0, 0, 0, 0.28);            /* soft drop shadow */
+}
+
+.card--elevated {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 100%),
+    rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 40px rgba(255, 255, 255, 0.05),
+    0 20px 48px rgba(0, 0, 0, 0.36);
+}
+
+.card--recessed {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%),
+    rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+.kpi {
+  background:
+    linear-gradient(180deg, rgba(212, 168, 83, 0.22) 0%, rgba(212, 168, 83, 0.05) 100%),
+    rgba(212, 168, 83, 0.07);
+  border-color: rgba(212, 168, 83, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 140, 0.50),    /* warm gold rim light */
+    inset 0 0 30px rgba(212, 168, 83, 0.07),
+    0 12px 32px rgba(0, 0, 0, 0.30);
+}
+
+.decision-card {
+  /* Brand maps --decision to danger red, which is correct for destructive actions but loud
+     for "open question" cards in a glass aesthetic. Override the visible accent to gold for
+     theme coordination — the underlying --decision variable still works for tags, status
+     pills, and any element where the red signal is semantically right. */
+  border-left: 3px solid rgba(212, 168, 83, 0.55);
+}
+
+pre {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.20) 0%, rgba(0, 0, 0, 0.38) 100%),
+    rgba(0, 0, 0, 0.30);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+code.inline {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.tag {
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  backdrop-filter: blur(8px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+table.compare thead th {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%),
+    rgba(255, 255, 255, 0.05);
+}
+table.compare tbody td { border-bottom-color: rgba(255, 255, 255, 0.08); }
+
+.toc-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+.toc-link.on {
+  background:
+    linear-gradient(180deg, rgba(212, 168, 83, 0.22) 0%, rgba(212, 168, 83, 0.06) 100%),
+    rgba(212, 168, 83, 0.08);
+  border-radius: 8px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 140, 0.36);
+}
+
+.wf-box {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 100%),
+    rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}

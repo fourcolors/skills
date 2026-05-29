@@ -1,0 +1,93 @@
+<!-- _arch-delta — bespoke architecture delta diagram for goal-path-b-phase-1.html.
+     Two side-by-side flow columns: Path A (shipped today) vs Phase 1 (this goal).
+     Color coding: green = unchanged, gold = new wire. -->
+<style>
+  .pbg-delta { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0 8px; }
+  @media (max-width: 900px) { .pbg-delta { grid-template-columns: 1fr; } }
+  .pbg-col { padding: 18px 20px; border-radius: 8px; background: var(--surface, #fff); border: 1px solid var(--border, rgba(0,0,0,0.07)); }
+  .pbg-col h3 { font-family: var(--font-display, Georgia, serif); font-size: 14px; font-weight: 600; color: var(--text, #141413); margin: 0 0 14px 0; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pbg-col h3 .pbg-pill { font-size: 10px; padding: 2px 8px; border-radius: 3px; margin-left: 8px; font-family: var(--font-mono, monospace); }
+  .pbg-col.pbg-old h3 .pbg-pill { background: rgba(120, 140, 93, 0.15); color: var(--good, #788C5D); }
+  .pbg-col.pbg-new h3 .pbg-pill { background: rgba(217, 119, 87, 0.15); color: var(--accent, #D97757); }
+  .pbg-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border, rgba(0,0,0,0.05)); font-size: 12.5px; }
+  .pbg-step:last-child { border-bottom: none; }
+  .pbg-step-num { font-family: var(--font-mono, monospace); font-size: 10px; background: var(--surface2, #F0EEE6); color: var(--text-dim, #87867F); padding: 2px 6px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; font-weight: 600; }
+  .pbg-step-body { line-height: 1.5; }
+  .pbg-step-body code { font-family: var(--font-mono, monospace); font-size: 11.5px; background: var(--surface2, #F0EEE6); padding: 1px 5px; border-radius: 3px; }
+  .pbg-step.pbg-changed .pbg-step-body { color: var(--text, #141413); font-weight: 500; }
+  .pbg-step.pbg-changed .pbg-step-num { background: rgba(217, 119, 87, 0.15); color: var(--accent, #D97757); }
+  .pbg-step.pbg-unchanged .pbg-step-body { color: var(--text-dim, #87867F); }
+  .pbg-arrow-label { font-family: var(--font-mono, monospace); font-size: 10.5px; color: var(--text-dim, #87867F); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .pbg-legend { font-size: 12px; color: var(--text-dim, #87867F); text-align: center; margin-top: 10px; }
+  .pbg-legend .pbg-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 6px 0 14px; vertical-align: middle; }
+  .pbg-legend .pbg-swatch:first-child { margin-left: 0; }
+  .pbg-legend .pbg-old-sw { background: var(--good, #788C5D); }
+  .pbg-legend .pbg-new-sw { background: var(--accent, #D97757); }
+</style>
+
+<div class="pbg-delta">
+
+  <div class="pbg-col pbg-old">
+    <h3>Path A (shipped) <span class="pbg-pill">today</span></h3>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">1</span>
+      <div class="pbg-step-body">Test code drives <code>WorkerHarness.drive_turn("DRIVE: text")</code> — Python subprocess via Port.open</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">2</span>
+      <div class="pbg-step-body">Worker cascaded session (Deepgram STT + Gemini + TTS) processes the turn via HubAgent</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">3</span>
+      <div class="pbg-step-body"><strong>Test code separately calls</strong> <code>MCPRuntime.search_rooms/2</code>, <code>add_room_to_cart/2</code>, etc — Elixir-test-side, NOT through any wire</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">4</span>
+      <div class="pbg-step-body">State pushed back to worker via <code>WorkerHarness.push_state(state_json)</code> over stdin</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">5</span>
+      <div class="pbg-step-body">Agent reads state, narrates response (incl. RES-1990-XXXXXX verbatim at checkout)</div>
+    </div>
+    <div class="pbg-arrow-label">Proves: scene FSM + cart + adapter + saga + narration all wire. Tool surface NOT exercised on the real wire.</div>
+  </div>
+
+  <div class="pbg-col pbg-new">
+    <h3>Phase 1 (this goal) <span class="pbg-pill">2-3 days</span></h3>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">1</span>
+      <div class="pbg-step-body">Test code drives <code>WorkerHarness.drive_turn("DRIVE: text")</code> — same as Path A (still text input; real audio is Phase 3)</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">2</span>
+      <div class="pbg-step-body">Worker cascaded session processes the turn — same</div>
+    </div>
+    <div class="pbg-step pbg-changed">
+      <span class="pbg-step-num">3a</span>
+      <div class="pbg-step-body"><strong>NEW</strong>: HubAgent has an <code>MCPToolset(MCPServerHTTP(url=http://.../mcp/v1/rpc))</code>. LLM sees the booking tools via <code>tools/list</code> over the wire.</div>
+    </div>
+    <div class="pbg-step pbg-changed">
+      <span class="pbg-step-num">3b</span>
+      <div class="pbg-step-body"><strong>NEW</strong>: LLM invokes a tool → MCPServerHTTP POSTs <code>tools/call</code> to Elixir Plug → Plug routes to <code>MCPRuntime.dispatch/3</code></div>
+    </div>
+    <div class="pbg-step pbg-changed">
+      <span class="pbg-step-num">3c</span>
+      <div class="pbg-step-body"><strong>NEW</strong>: <code>MCPRuntime</code> mutates Session, returns result envelope, Plug returns JSON-RPC response, MCPServerHTTP delivers to LLM</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">4</span>
+      <div class="pbg-step-body">State push remains via <code>WorkerHarness.push_state</code> (Phase 1 keeps stdin protocol; Phase 3 swaps to LiveKit DataChannels)</div>
+    </div>
+    <div class="pbg-step pbg-unchanged">
+      <span class="pbg-step-num">5</span>
+      <div class="pbg-step-body">Agent narrates RES-1990-XXXXXX verbatim at checkout — same flow, now exercised against production tool transport</div>
+    </div>
+    <div class="pbg-arrow-label">Proves: production tool wire works under the booking conversation. Test caller is still the harness; real-audio is Phase 3.</div>
+  </div>
+
+</div>
+
+<div class="pbg-legend">
+  <span><span class="pbg-swatch pbg-old-sw"></span>unchanged from Path A</span>
+  <span><span class="pbg-swatch pbg-new-sw"></span>new in Phase 1</span>
+</div>

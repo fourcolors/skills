@@ -1,0 +1,24 @@
+<!-- kpi-strip — 4-column headline metrics row. Fills: KPI{1..4}_{LABEL,VALUE,DELTA,CLASS}.
+     KPI{N}_CLASS is the delta variant — empty for good (default green) or "warn" for amber. -->
+<div class="kpis">
+  <div class="kpi">
+    <div class="label">{{KPI1_LABEL}}</div>
+    <div class="value">{{KPI1_VALUE}}</div>
+    <div class="delta {{KPI1_CLASS}}">{{KPI1_DELTA}}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">{{KPI2_LABEL}}</div>
+    <div class="value">{{KPI2_VALUE}}</div>
+    <div class="delta {{KPI2_CLASS}}">{{KPI2_DELTA}}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">{{KPI3_LABEL}}</div>
+    <div class="value">{{KPI3_VALUE}}</div>
+    <div class="delta {{KPI3_CLASS}}">{{KPI3_DELTA}}</div>
+  </div>
+  <div class="kpi">
+    <div class="label">{{KPI4_LABEL}}</div>
+    <div class="value">{{KPI4_VALUE}}</div>
+    <div class="delta {{KPI4_CLASS}}">{{KPI4_DELTA}}</div>
+  </div>
+</div>

@@ -1,0 +1,153 @@
+<!-- _spike-rubric — scored rubric for the spike. Updated 2026-05-24 with answers
+     from the executed spike. PASS/PARTIAL/FAIL with cited evidence per row. -->
+<style>
+  .pb-rubric { margin: 16px 0 8px; }
+  .pb-rubric-intro { font-size: 13.5px; color: var(--text-dim, #87867F); margin-bottom: 14px; max-width: 760px; }
+  .pb-rubric table { width: 100%; border-collapse: collapse; background: var(--surface, #fff); border: 1px solid var(--border, rgba(0,0,0,0.07)); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  .pb-rubric th, .pb-rubric td { padding: 11px 13px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border, rgba(0,0,0,0.05)); }
+  .pb-rubric thead th { background: var(--surface2, #F0EEE6); font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim, #87867F); font-weight: 600; }
+  .pb-rubric tbody tr:last-child td { border-bottom: none; }
+  .pb-rubric .pb-num { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--text-dim, #87867F); white-space: nowrap; padding-right: 4px; }
+  .pb-rubric .pb-q { font-weight: 600; color: var(--text, #141413); font-size: 12.5px; }
+  .pb-rubric .pb-why { color: var(--text-dim, #87867F); font-size: 12px; margin-top: 3px; line-height: 1.45; }
+  .pb-rubric .pb-pass { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; color: var(--good, #788C5D); line-height: 1.45; }
+  .pb-rubric .pb-evidence { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; color: var(--text-dim, #87867F); line-height: 1.45; }
+  .pb-rubric .pb-evidence code { font-size: 10.5px; background: var(--surface2, #F0EEE6); padding: 1px 4px; border-radius: 3px; }
+  .pb-rubric .pb-answer { font-size: 12px; line-height: 1.5; }
+  .pb-rubric .pb-verdict { display: inline-block; font-family: var(--font-mono, ui-monospace, monospace); font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.05em; margin-right: 6px; vertical-align: 1px; }
+  .pb-rubric .pb-verdict.pb-pass { background: rgba(120, 140, 93, 0.15); color: var(--good, #788C5D); }
+  .pb-rubric .pb-verdict.pb-partial { background: rgba(217, 119, 87, 0.15); color: var(--accent, #D97757); }
+  .pb-rubric .pb-verdict.pb-fail { background: rgba(176, 74, 63, 0.15); color: var(--warn, #B04A3F); }
+</style>
+
+<div class="pb-rubric">
+  <p class="pb-rubric-intro">
+    <strong>Spike executed 2026-05-24.</strong> Eight rubric questions, eight answers. Stage 1a (FastMCP reference server) answered R1, R3-R7 against a known-good server. Stage 1b (Elixir Plug at <code>POST /mcp/v1/rpc</code>) answered R2 (auth enforcement) + confirmed wire-shape parity via Phoenix.ConnTest. R8 partial — stateless mode works for the spike; full session-lifecycle decision deferred to Phase 1. <strong>Overall verdict: GO for path B Phase 1+.</strong>
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 4%;">#</th>
+        <th style="width: 28%;">Question + why it matters</th>
+        <th style="width: 20%;">Pass criterion</th>
+        <th style="width: 16%;">Evidence</th>
+        <th style="width: 32%;">Answer</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td class="pb-num">R1</td>
+        <td>
+          <div class="pb-q">Streamable-HTTP transport: SSE, JSON, or both?</div>
+          <div class="pb-why">Determines whether our Plug needs <code>text/event-stream</code> chunked encoding.</div>
+        </td>
+        <td class="pb-pass">PASS = exact Content-Type + body shape known.</td>
+        <td class="pb-evidence">FastMCP server log; curl probe; <code>worker/.venv/.../mcp/server/streamable_http.py:42-58</code></td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          POST with <code>Content-Type: application/json</code> + <code>Accept: application/json, text/event-stream</code>. JSON-RPC 2.0 envelope. Server can return JSON when <code>json_response=True</code> (we use this); SSE optional. Single POST → single JSON response. No chunked encoding needed for spike-scope.
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R2</td>
+        <td>
+          <div class="pb-q">Auth header from MCPServerHTTP?</div>
+          <div class="pb-why">Need to confirm SDK emits <code>Authorization: Bearer</code> on every request.</div>
+        </td>
+        <td class="pb-pass">PASS = MCPAuth plug accepts every inbound request.</td>
+        <td class="pb-evidence">Phoenix.ConnTest auth cases in <code>mcp_controller_rpc_test.exs</code></td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          SDK forwards <code>headers={"Authorization": f"Bearer {token}"}</code> on every request via httpx. Elixir <code>MCPAuth</code> plug enforces correctly: 401 on missing/malformed, 200 on valid Bearer. Verified by <code>mcp_controller_rpc_test.exs</code> (3 auth cases, all green).
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R3</td>
+        <td>
+          <div class="pb-q">initialize handshake: required fields + response?</div>
+          <div class="pb-why">Spike-killer if wrong.</div>
+        </td>
+        <td class="pb-pass">PASS = MCPToolset transitions to "ready" state.</td>
+        <td class="pb-evidence">Both servers: <code>test_spike_reference_roundtrip.py::test_r3</code> + <code>mcp_controller_rpc_test.exs</code> R3 case</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          Request: <code>{jsonrpc, id, method:"initialize", params:{protocolVersion, capabilities, clientInfo}}</code>. Response: <code>{jsonrpc, id, result:{protocolVersion, capabilities, serverInfo}}</code>. Protocol version: <strong>2025-06-18</strong>. Both reference + Elixir return identical shapes.
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R4</td>
+        <td>
+          <div class="pb-q">tools/list schema?</div>
+          <div class="pb-why">Wrong schema → MCPToolset rejects catalog silently.</div>
+        </td>
+        <td class="pb-pass">PASS = tool appears in MCPToolset enumerated tools.</td>
+        <td class="pb-evidence">R4 tests against both servers + observed LLM tool-call event</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          <code>result.tools[*]</code> shape: <code>{name, description, inputSchema}</code>. inputSchema is JSON Schema with <code>{type:"object", properties:{...}, required:[...]}</code>. Pydantic-style <code>anyOf</code> for nullable types accepted by SDK. Both servers identical.
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R5</td>
+        <td>
+          <div class="pb-q">tools/call lands with intended args?</div>
+          <div class="pb-why">The whole point.</div>
+        </td>
+        <td class="pb-pass">PASS = log shows tools/call with args matching LLM intent.</td>
+        <td class="pb-evidence">Full LLM round-trip against ref server; Elixir Plug envelope parity</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          End-to-end: Gemini 3.1 Flash Lite (via cascaded plugin) invoked <code>spike_echo</code> over MCP wire. Captured event: <code>FunctionCallEvent(name='spike_echo', arguments='{"text":"spike R5"}')</code>. Reference-server tool function logged the call with correct args. Elixir Plug returns identical envelope shape (Phoenix.ConnTest R5 case).
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R6</td>
+        <td>
+          <div class="pb-q">tools/call latency localhost?</div>
+          <div class="pb-why">Voice has ~200ms tolerance per turn.</div>
+        </td>
+        <td class="pb-pass">PASS ≤100ms, ACCEPTABLE ≤200ms, PIVOT ≥300ms.</td>
+        <td class="pb-evidence">N=20 measurements, FastMCP reference</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          FastMCP reference: <strong>p50 = 1.4ms, p95 = 1.8ms, max = 2.0ms</strong> (N=20). Massive headroom vs 100ms target. SDK serialization + httpx round-trip + FastMCP handler is sub-2ms localhost. Elixir Plug equivalent (BEAM + Phoenix) will be similar single-digit ms. No latency risk for path B.
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R7</td>
+        <td>
+          <div class="pb-q">Error propagation?</div>
+          <div class="pb-why">If errors swallow silently, agent goes silent on tool failures.</div>
+        </td>
+        <td class="pb-pass">PASS = error reaches LLM context.</td>
+        <td class="pb-evidence">Unknown-tool probe against both servers</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-pass">PASS</span>
+          Tool error envelope: <code>{result: {content: [{type:"text", text:"Unknown tool: X"}], isError: true}}</code>. NOT a JSON-RPC error — tool errors are <em>successful</em> JSON-RPC responses with <code>isError:true</code> in the result. JSON-RPC errors (-32601 etc.) are for protocol errors only (unknown method, malformed). Both servers consistent.
+        </td>
+      </tr>
+
+      <tr>
+        <td class="pb-num">R8</td>
+        <td>
+          <div class="pb-q">Session lifecycle: stateless vs server-side state?</div>
+          <div class="pb-why">Big design implication for Phase 1.</div>
+        </td>
+        <td class="pb-pass">PASS = we know definitively from spec + traffic.</td>
+        <td class="pb-evidence"><code>mcp/server/streamable_http.py:48-51</code> + FastMCP <code>stateless_http=True</code> setting</td>
+        <td class="pb-answer">
+          <span class="pb-verdict pb-partial">PARTIAL</span>
+          Protocol supports both via the <code>mcp-session-id</code> response header. Server can set <code>mcp_session_id=None</code> for stateless OR generate per-connection IDs for stateful. Spike Plug is fully stateless (no session header emitted). <strong>Phase 1 decides</strong>: if MCP server needs per-call_id state (e.g., tracking which Session GenServer to dispatch to), stateful makes sense — session-id can mirror call_id. Stateless is simpler and viable for spike validation; not load-bearing for the verdict.
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+</div>

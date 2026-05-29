@@ -1,0 +1,25 @@
+<!-- is-isnt-cards — §02 content-baked pair of cards. -->
+<div class="grid grid-2">
+  <div class="card card--elevated">
+    <span class="tag tag--good">is</span>
+    <h3>A dispatcher + a filesystem</h3>
+    <ul class="tight">
+      <li>A tiny SKILL.md (~2 KB) that tells Claude when to invoke + the script surface</li>
+      <li>Shell scripts in <code class="inline">bin/</code> that do the byte-pushing</li>
+      <li>A snippet library in <code class="inline">snippets/</code> — one file per element</li>
+      <li>A theme library in <code class="inline">themes/</code> — one CSS file per theme</li>
+      <li>A per-page JSON manifest as source of truth; HTML is rendered from it</li>
+    </ul>
+  </div>
+  <div class="card card--elevated">
+    <span class="tag tag--warn">isn't</span>
+    <h3>A diagramming tool or build system</h3>
+    <ul class="tight">
+      <li>No runtime renderers (Mermaid, D3, Chart.js) — inline SVG <em>is</em> first-class</li>
+      <li>No ASCII-art diagrams — wireframe with HTML/CSS</li>
+      <li>No build step, no bundler, no asset pipeline</li>
+      <li>Snippets ship as structural shells; data values are slot-fills</li>
+      <li>Not a usage-tracking system — promotion is manual</li>
+    </ul>
+  </div>
+</div>

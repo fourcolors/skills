@@ -1,0 +1,69 @@
+<!-- path-b-arch — bespoke architecture diagram for path-b-livekit-room.html.
+     Six rounded boxes in two columns showing the data flow:
+     Browser → LiveKit Cloud → Worker → cascaded plugin → MCP HTTP → Elixir → CRS.
+     Arrows show audio (left) vs tool-call (right) paths. Color encodes
+     "exists today" (green) vs "needs building" (clay/warn). -->
+<style>
+  .pb-arch { display: grid; grid-template-columns: 1fr; gap: 18px; margin: 24px 0 8px; }
+  .pb-arch .pb-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: stretch; }
+  .pb-arch .pb-row-single { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .pb-box { padding: 14px 16px; border-radius: 10px; background: var(--surface-1, #1a1a1a); border-left: 4px solid var(--accent, #c9a961); min-height: 64px; display: flex; flex-direction: column; justify-content: center; }
+  .pb-box .pb-name { font-family: var(--mono, ui-monospace, Menlo, monospace); font-size: 13px; font-weight: 600; color: var(--text, #f4f0e8); letter-spacing: 0.02em; }
+  .pb-box .pb-detail { font-size: 12.5px; color: var(--text-dim, #8a8278); margin-top: 4px; line-height: 1.4; }
+  .pb-box.pb-shipped { border-left-color: #5a8a6a; }
+  .pb-box.pb-build { border-left-color: var(--accent, #c9a961); }
+  .pb-box.pb-build .pb-name::after { content: " · NEEDS BUILDING"; font-size: 10px; font-weight: 700; color: var(--accent, #c9a961); letter-spacing: 0.08em; }
+  .pb-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 80px; }
+  .pb-arrow .pb-arrow-label { font-size: 10px; font-family: var(--mono, monospace); color: var(--text-dim, #8a8278); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .pb-arrow .pb-arrow-glyph { font-size: 18px; color: var(--accent, #c9a961); font-weight: 700; }
+  .pb-legend { display: flex; gap: 24px; justify-content: center; font-size: 12px; color: var(--text-dim, #8a8278); margin-top: 8px; }
+  .pb-legend .pb-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .pb-legend .pb-swatch.pb-shipped { background: #5a8a6a; }
+  .pb-legend .pb-swatch.pb-build { background: var(--accent, #c9a961); }
+</style>
+
+<div class="pb-arch">
+
+  <div class="pb-row">
+    <div class="pb-box pb-build">
+      <div class="pb-name">browser / widget</div>
+      <div class="pb-detail">Opens LiveKit room, captures mic, renders Acme UI. Needs LiveKit JS SDK wiring + room-token fetch from widget controller.</div>
+    </div>
+    <div class="pb-arrow">
+      <span class="pb-arrow-label">audio</span>
+      <span class="pb-arrow-glyph">⇄</span>
+    </div>
+    <div class="pb-box pb-shipped">
+      <div class="pb-name">LiveKit Cloud</div>
+      <div class="pb-detail">Room + agent dispatcher. Shipped per §9.0-003. Widget controller mints session tokens already.</div>
+    </div>
+  </div>
+
+  <div class="pb-row">
+    <div class="pb-box pb-shipped">
+      <div class="pb-name">worker (python)</div>
+      <div class="pb-detail">Cascaded session (Deepgram + Gemini + TTS) + HubAgent. Shipped today. Currently no MCPToolset; tools resolved Elixir-side via harness.</div>
+    </div>
+    <div class="pb-arrow">
+      <span class="pb-arrow-label">JSON-RPC</span>
+      <span class="pb-arrow-glyph">⇄</span>
+    </div>
+    <div class="pb-box pb-build">
+      <div class="pb-name">Elixir MCP HTTP RPC</div>
+      <div class="pb-detail">Streamable-HTTP endpoint speaking JSON-RPC. Today only GET /mcp/v1/tools (returns []). Needs POST /mcp/v1/rpc + tools/list + tools/call + bearer auth.</div>
+    </div>
+  </div>
+
+  <div class="pb-row-single">
+    <div class="pb-box pb-shipped">
+      <div class="pb-name">Acme.MCPRuntime + CRS adapter + Session</div>
+      <div class="pb-detail">Tool dispatch already routes to FSM transitions and the in-memory ReservHotel adapter. The harness exercises this fully. Path B just changes the caller from Elixir-test-code to a remote HTTP request.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="pb-legend">
+  <span><span class="pb-swatch pb-shipped"></span>shipped</span>
+  <span><span class="pb-swatch pb-build"></span>needs building (path B scope)</span>
+</div>

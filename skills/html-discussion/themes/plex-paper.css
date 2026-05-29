@@ -1,0 +1,42 @@
+/* plex-paper — IBM Plex variant. Same warm palette; distinctive Plex typography. Requires network. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --font-display: 'IBM Plex Serif', Georgia, serif;
+  --font-body:    'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+
+  --bg: #faf6f1;
+  --surface: #ffffff;
+  --surface2: #f3ede5;
+  --surface-elevated: #fffaf3;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-bright: rgba(0, 0, 0, 0.14);
+  --text: #241c14;
+  --text-dim: #8a7e6c;
+
+  --accent:    #c2410c;  --accent-dim:   rgba(194, 65, 12, 0.08);
+  --good:      #65a30d;  --good-dim:     rgba(101, 163, 13, 0.08);
+  --cool:      #0f766e;  --cool-dim:     rgba(15, 118, 110, 0.08);
+  --warn:      #b45309;  --warn-dim:     rgba(180, 83, 9, 0.08);
+  --decision:  #9f1239;  --decision-dim: rgba(159, 18, 57, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1410;
+    --surface: #221c17;
+    --surface2: #2a2219;
+    --surface-elevated: #322820;
+    --border: rgba(255, 255, 255, 0.06);
+    --border-bright: rgba(255, 255, 255, 0.12);
+    --text: #ede4d7;
+    --text-dim: #a89a86;
+
+    --accent:    #fb923c;  --accent-dim:   rgba(251, 146, 60, 0.12);
+    --good:      #bef264;  --good-dim:     rgba(190, 242, 100, 0.10);
+    --cool:      #5eead4;  --cool-dim:     rgba(94, 234, 212, 0.10);
+    --warn:      #fbbf24;  --warn-dim:     rgba(251, 191, 36, 0.10);
+    --decision:  #fda4af;  --decision-dim: rgba(253, 164, 175, 0.10);
+  }
+}

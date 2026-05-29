@@ -1,0 +1,77 @@
+/* warm-paper — default. Thariq's html-effectiveness palette: ivory, slate, clay, olive,
+   oat, warm grays. System fonts only; zero network round-trips. */
+:root {
+  --font-display: ui-serif, Georgia, "Times New Roman", serif;
+  --font-body:    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+
+  --bg:                 #FAF9F5;  /* ivory */
+  --surface:            #FFFFFF;
+  --surface2:           #F0EEE6;  /* gray-100 — dividers, recessed surfaces */
+  --surface-elevated:   #FFFEFA;  /* slightly warm white for elevated cards */
+  --border:             rgba(20, 20, 19, 0.07);
+  --border-bright:      rgba(20, 20, 19, 0.14);
+  --text:               #141413;  /* slate */
+  --text-dim:           #87867F;  /* gray-500 */
+
+  --accent:             #D97757;  /* clay */
+  --accent-dim:         rgba(217, 119, 87, 0.10);
+
+  --good:               #788C5D;  /* olive */
+  --good-dim:           rgba(120, 140, 93, 0.10);
+
+  /* Thariq's palette is intentionally tight — cool/warn/decision derive from
+     warm-gray + clay-variants rather than introducing unrelated hues. */
+  --cool:               #3D3D3A;  /* gray-700 — neutral emphasis */
+  --cool-dim:           rgba(61, 61, 58, 0.06);
+
+  --warn:               #B04A3F;  /* rust — derived deeper clay */
+  --warn-dim:           rgba(176, 74, 63, 0.10);
+
+  --decision:           #B85C3E;  /* clay-d */
+  --decision-dim:       rgba(184, 92, 62, 0.10);
+}
+
+/* warm-paper is light-only by design. The ivory + clay editorial paper feel IS the identity;
+   auto-flipping to dark on system pref breaks the brand promise. Thariq's gallery and the
+   Acme architecture doc (docs/architecture.html) both ship
+   light-only for the same reason. */
+
+/* === Editorial component overrides ===
+   Aligns visual grammar with Acme docs (docs/architecture.html):
+   flat ivory bg, hard 1.5px borders, h1/h2 with bottom rules, no card shadows.
+   The shell loads {{THEME_CSS}} last, so these win via cascade order. */
+
+body {
+  background-image: none;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 { font-weight: 500; letter-spacing: -0.015em; }
+h2 { font-weight: 500; font-size: 26px; letter-spacing: -0.01em; }
+h3 { font-weight: 500; font-size: 19px; letter-spacing: normal; }
+
+h1 {
+  border-bottom: 2px solid rgba(20, 20, 19, 0.18);
+  padding-bottom: 24px;
+}
+
+h2 {
+  border-bottom: 1px solid rgba(20, 20, 19, 0.18);
+  padding-bottom: 12px;
+}
+
+.card,
+.kpi,
+.decision-card,
+.wireframe,
+table.compare,
+pre {
+  border-width: 1.5px;
+  border-color: rgba(20, 20, 19, 0.18);
+  box-shadow: none;
+}
+
+.card--elevated { box-shadow: none; background: var(--surface); }

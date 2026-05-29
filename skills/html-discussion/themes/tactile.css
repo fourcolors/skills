@@ -1,0 +1,251 @@
+/* tactile — dark neomorphism, xAI / Grok inspired.
+   True-black background, surfaces SAME COLOR as bg (the neomorphism signature),
+   depth defined by a consistent two-shadow pair: cool gray highlight + pure black
+   shadow. No borders. Sharp orange accent. Mono labels for the instrument-panel feel. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* True black — anodized aluminum / black-on-black industrial. Cool, not warm. */
+  --bg:                 #0d0d0e;
+  --surface:            #0d0d0e;  /* SAME as bg — this is what makes it neomorphic */
+  --surface2:           #070708;  /* recessed: near-pure-black */
+  --surface-elevated:   #141416;  /* elevated: subtly lighter cool gray */
+  --border:             rgba(255, 255, 255, 0.05);
+  --border-bright:      rgba(255, 255, 255, 0.09);
+  --text:               #e8e8ea;  /* cool off-white */
+  --text-dim:           rgba(232, 232, 234, 0.52);
+
+  /* Accent: sharp orange. Against true black the contrast does the saturation work. */
+  --accent:             #ff5722;
+  --accent-dim:         rgba(255, 87, 34, 0.12);
+
+  --good:               #7faf7c;  /* muted cool green */
+  --good-dim:           rgba(127, 175, 124, 0.10);
+
+  --cool:               #8a9aa8;  /* steel gray-blue */
+  --cool-dim:           rgba(138, 154, 168, 0.08);
+
+  --warn:               #f0a83a;  /* clean amber */
+  --warn-dim:           rgba(240, 168, 58, 0.12);
+
+  --decision:           #ff7043;  /* lighter orange — family of accent, not a clashing red */
+  --decision-dim:       rgba(255, 112, 67, 0.10);
+
+  /* Neomorph shadow tokens — cool gray highlight, pure black shadow.
+     Direction stays consistent (upper-left light, lower-right dark) or the illusion breaks. */
+  --nm-light:    rgba(255, 255, 255, 0.05);
+  --nm-light-2:  rgba(255, 255, 255, 0.08);    /* stronger for elevated */
+  --nm-dark:     rgba(0, 0, 0, 0.70);
+  --nm-dark-2:   rgba(0, 0, 0, 0.88);           /* stronger for deeper recess */
+}
+
+/* tactile is dark-first only. No prefers-color-scheme override. */
+
+/* === Body wallpaper — subtle cool gray vignette so surfaces sit on something === */
+body {
+  background:
+    radial-gradient(ellipse 1500px 1000px at 50% 0%,   rgba(40, 40, 44, 0.40) 0%, transparent 70%),
+    radial-gradient(ellipse 1000px 900px  at 100% 100%, rgba(30, 30, 34, 0.28) 0%, transparent 60%),
+    var(--bg);
+}
+
+/* === Surfaces ===
+   Same color as bg, no borders. Two-shadow pair defines depth.
+   Generous corner radius (16-18px) reads as "molded" not "cut". */
+.card,
+.kpi,
+.wireframe,
+.callout,
+table.compare {
+  background: var(--surface);
+  border: none;
+  border-radius: 16px;
+  box-shadow:
+    -6px -6px 14px var(--nm-light),
+     8px  8px 20px var(--nm-dark);
+}
+
+.card--elevated {
+  background: var(--surface-elevated);
+  border: none;
+  box-shadow:
+    -8px -8px 18px var(--nm-light-2),
+    10px 10px 28px var(--nm-dark-2);
+}
+
+.card--recessed {
+  background: var(--surface2);
+  border: none;
+  box-shadow:
+    inset  5px  5px 12px var(--nm-dark),
+    inset -3px -3px  8px var(--nm-light);
+}
+
+/* Decision card — the signature "leather tab" orange stripe along the left edge,
+   like the cassette pull in the reference imagery. */
+.decision-card {
+  background: var(--surface);
+  border: none;
+  border-radius: 16px;
+  position: relative;
+  padding-left: 28px;
+  box-shadow:
+    -6px -6px 14px var(--nm-light),
+     8px  8px 20px var(--nm-dark),
+    inset 4px 0 0 var(--accent);
+}
+
+/* KPI — sharp orange inner glow so the metric reads as "powered on" */
+.kpi {
+  box-shadow:
+    -6px -6px 14px var(--nm-light),
+     8px  8px 20px var(--nm-dark),
+    inset 0 1px 0 rgba(255, 87, 34, 0.14);
+}
+.kpi .label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.kpi .value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* === Code surfaces — recessed (pressed-into-material) === */
+pre {
+  background: var(--surface2);
+  border: none;
+  border-radius: 12px;
+  box-shadow:
+    inset  4px  4px 10px var(--nm-dark),
+    inset -2px -2px  6px var(--nm-light);
+}
+
+code.inline {
+  background: var(--surface2);
+  border: none;
+  padding: 1px 7px;
+  border-radius: 5px;
+  box-shadow:
+    inset  1px  1px 3px var(--nm-dark),
+    inset -1px -1px 2px var(--nm-light);
+  font-size: 0.92em;
+}
+
+/* === Tags — small neomorphic chips with mono uppercase labels.
+       This is the "ARA EVE LEO SAT" button-row feel from the reference. === */
+.tag {
+  background: var(--surface);
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  box-shadow:
+    -2px -2px 5px var(--nm-light),
+     2px  2px 5px var(--nm-dark);
+}
+.tag--accent   { color: var(--accent); }
+.tag--good     { color: var(--good); }
+.tag--cool     { color: var(--cool); }
+.tag--warn     { color: var(--warn); }
+.tag--decision { color: var(--decision); }
+
+/* === Tables — header is recessed, rows are flat on the card === */
+table.compare thead th {
+  background: var(--surface2);
+  border: none;
+  border-bottom: 1px solid var(--nm-light);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  box-shadow: inset 0 1px 2px var(--nm-dark);
+}
+table.compare tbody td {
+  border-bottom: 1px solid rgba(255, 240, 220, 0.04);
+}
+
+/* === Wireframe boxes — small neomorphic tiles (nodes in the arch diagram) === */
+.wf-box,
+.node {
+  background: var(--surface);
+  border: none;
+  border-radius: 10px;
+  box-shadow:
+    -3px -3px 8px var(--nm-light),
+     4px  4px 10px var(--nm-dark);
+}
+
+/* === TOC — hover = subtle raise; active = pressed === */
+.toc-link {
+  border-radius: 8px;
+  padding: 5px 9px;
+  transition: box-shadow 120ms ease, color 120ms ease;
+}
+.toc-link:hover {
+  background: var(--surface);
+  box-shadow:
+    -2px -2px 5px var(--nm-light),
+     2px  2px 5px var(--nm-dark);
+}
+.toc-link.on {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow:
+    inset  2px  2px 5px var(--nm-dark),
+    inset -1px -1px 3px var(--nm-light);
+}
+.sidebar-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* === Typography — instrument-panel grammar ===
+   Display sans for headings (tight tracking), mono for labels/eyebrows. */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+h1 { font-weight: 700; }
+h2 { font-weight: 600; }
+h3 { font-weight: 600; }
+
+.eyebrow,
+.num {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.lede {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+/* Subtle scroll-bar harmony (WebKit only — graceful no-op elsewhere) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--surface2); }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-elevated);
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px var(--nm-light);
+}

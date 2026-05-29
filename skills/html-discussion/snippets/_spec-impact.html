@@ -1,0 +1,189 @@
+<!-- _spec-impact — table of feature/scenario impact from Phase 1.
+     Columns: ref(s), scenario title, current state, Phase 1 action, file:line. -->
+<style>
+  .pbg-spec { margin: 16px 0 8px; }
+  .pbg-spec table { width: 100%; border-collapse: collapse; background: var(--surface, #fff); border: 1px solid var(--border, rgba(0,0,0,0.07)); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  .pbg-spec th, .pbg-spec td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border, rgba(0,0,0,0.05)); }
+  .pbg-spec thead th { background: var(--surface2, #F0EEE6); font-family: var(--font-mono, monospace); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim, #87867F); font-weight: 600; }
+  .pbg-spec tbody tr:last-child td { border-bottom: none; }
+  .pbg-spec .pbg-refs { font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-dim, #87867F); white-space: nowrap; }
+  .pbg-spec .pbg-title { color: var(--text, #141413); font-weight: 500; line-height: 1.45; }
+  .pbg-spec .pbg-state, .pbg-spec .pbg-file { font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-dim, #87867F); line-height: 1.45; }
+  .pbg-spec .pbg-action { font-size: 12px; line-height: 1.5; }
+  .pbg-spec .pbg-action .pbg-tag { display: inline-block; font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.05em; margin-right: 4px; vertical-align: 1px; }
+  .pbg-spec .pbg-tag.pbg-unstub { background: rgba(120, 140, 93, 0.15); color: var(--good, #788C5D); }
+  .pbg-spec .pbg-tag.pbg-new { background: rgba(217, 119, 87, 0.15); color: var(--accent, #D97757); }
+  .pbg-spec .pbg-tag.pbg-keep { background: rgba(135, 134, 127, 0.15); color: var(--text-dim, #87867F); }
+  .pbg-spec .pbg-tag.pbg-optional { background: rgba(184, 92, 62, 0.15); color: #B85C3E; }
+  .pbg-spec .pbg-tag.pbg-defer { background: rgba(135, 134, 127, 0.18); color: var(--text-dim, #87867F); }
+  .pbg-spec h4 { font-family: var(--font-display, Georgia, serif); font-size: 14px; font-weight: 600; color: var(--text, #141413); margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border, rgba(0,0,0,0.07)); }
+</style>
+
+<div class="pbg-spec">
+
+  <h4>A. Un-stub after Phase 1 lands (3 scenarios)</h4>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Refs</th>
+        <th style="width: 32%;">Scenario</th>
+        <th style="width: 16%;">Current state</th>
+        <th style="width: 26%;">Action</th>
+        <th style="width: 12%;">File</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="pbg-refs">§1.0-022<br>§3.4-002<br>§3.4-003</td>
+        <td class="pbg-title">allowed_tools narrows what the model sees but never authorizes</td>
+        <td class="pbg-state">@stubbed:<br>mcp_toolset_narrowing_runtime<br>@phase:5</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-unstub">UN-STUB</span>Remove @stubbed tag after D3. MCPToolset narrowing is exercised by the worker test once env-driven wiring lands. Add a new <code>@requires:</code> to the new test file.</td>
+        <td class="pbg-file">invariants.feature:1600</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§3.4-001<br>§3.4-004</td>
+        <td class="pbg-title">allowed_tools narrows what the LLM sees, not what's authorized</td>
+        <td class="pbg-state">@stubbed:<br>mcp_allowlist_runtime<br>@phase:5</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-unstub">UN-STUB</span>Remove @stubbed tag after D2+D3. The dispatch_via_rpc_test exercises both filter (LLM-side) and server-side enforcement.</td>
+        <td class="pbg-file">invariants.feature:1790</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§2.1-009<br>§2.1-010<br>§2.1-011</td>
+        <td class="pbg-title">MCP tools organized by workflow, dispatched through Session GenServer, co-located in BEAM app</td>
+        <td class="pbg-state">passing (test exists)<br>but tool_groups/0 returns []</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-unstub">STRENGTHEN</span>The test passes mechanically today because <code>tool_groups/0</code> returns <code>[]</code>. D1 wires it to <code>[:room_booking]</code>. Update the test to assert non-empty + matches RoomBooking allowlist.</td>
+        <td class="pbg-file">invariants.feature:137</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>B. New scenarios to add (4 scenarios)</h4>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Proposed refs</th>
+        <th style="width: 32%;">Scenario title</th>
+        <th style="width: 16%;">Tag set</th>
+        <th style="width: 26%;">@requires</th>
+        <th style="width: 12%;">File</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="pbg-refs">§1.0-017<br>§2.1-009</td>
+        <td class="pbg-title">tools/list catalog is derived from the active workflow's allowlist, not hand-maintained</td>
+        <td class="pbg-state">@invariant<br>@phase:1</td>
+        <td class="pbg-action">app/test/acme/mcp/tool_schema_test.exs<br>app/test/acme_web/controllers/mcp_controller_rpc_test.exs</td>
+        <td class="pbg-file">invariants.feature<br>(append)</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§2.1-010<br>§1.0-022</td>
+        <td class="pbg-title">tools/call over MCP RPC drives real FSM transitions on Session, same as direct MCPRuntime.dispatch</td>
+        <td class="pbg-state">@invariant<br>@phase:1</td>
+        <td class="pbg-action">app/test/acme/mcp/dispatch_via_rpc_test.exs</td>
+        <td class="pbg-file">invariants.feature<br>(append)</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§1.0-025<br>§9.0-003</td>
+        <td class="pbg-title">mcp-session-id mirrors the call_id from the bearer-token sub claim</td>
+        <td class="pbg-state">@invariant<br>@phase:1</td>
+        <td class="pbg-action">app/test/acme_web/controllers/mcp_controller_rpc_test.exs (R8 cases)</td>
+        <td class="pbg-file">invariants.feature<br>(append)</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§1.0-018<br>§3.4-015</td>
+        <td class="pbg-title">Worker-local @function_tool names never collide with MCP tools/list names</td>
+        <td class="pbg-state">@invariant<br>@phase:1</td>
+        <td class="pbg-action">worker/tests/test_tool_namespace_no_collision.py</td>
+        <td class="pbg-file">invariants.feature<br>(append)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>C. Unchanged but exercised more by Phase 1 (4 scenarios — no edit needed)</h4>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Refs</th>
+        <th style="width: 60%;">Scenario</th>
+        <th style="width: 26%;">Why included</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="pbg-refs">§1.0-017<br>§1.0-021<br>§1.0-027</td>
+        <td class="pbg-title">Python worker uses MCPServerHTTP wrapped in MCPToolset; tools field accepts both</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-keep">KEEP</span>D3 exercises this on the real wire (was test-stubbed before).</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§1.0-023<br>§1.0-024<br>§1.0-025</td>
+        <td class="pbg-title">Python is the worker language because LiveKit Agents MCPToolset is Python-only</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-keep">KEEP</span>Spike already validated. Phase 1 deepens.</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§1.0-018<br>§1.0-019<br>§1.0-026<br>§3.4-015</td>
+        <td class="pbg-title">@function_tool worker-local tools coexist with MCP toolset in agent's tools list</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-keep">KEEP</span>D5 hardens with collision test.</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§3.4-005<br>§3.4-006<br>§3.4-007<br>§3.4-008<br>§3.4-009<br>§3.4-010</td>
+        <td class="pbg-title">Allowlist mechanics + tool swap granularity</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-keep">KEEP</span>Already shipped at architectural level. Phase 1 doesn't change.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>D. Remains deferred — Phase 3 work (3 scenarios)</h4>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Refs</th>
+        <th style="width: 60%;">Scenario</th>
+        <th style="width: 26%;">Why Phase 1 doesn't unblock</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="pbg-refs">§9.0-001</td>
+        <td class="pbg-title">Widget controller mints call + LiveKit token; LiveView mounts</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-defer">DEFER</span>Needs browser-side LiveKit JS SDK + actual room join. Phase 3.</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§9.0-002<br>§9.0-005<br>§9.0-006</td>
+        <td class="pbg-title">Agent starts at hub and runs workflows</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-defer">DEFER</span>Same — needs real LiveKit dispatch flow. Phase 3.</td>
+      </tr>
+      <tr>
+        <td class="pbg-refs">§9.0-007<br>§9.0-008</td>
+        <td class="pbg-title">Workflow completion + session inactivity teardown</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-defer">DEFER</span>Lifecycle work outside Phase 1's scope.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>E. Optional — could be addressed in Phase 1 (1 scenario)</h4>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Refs</th>
+        <th style="width: 32%;">Scenario</th>
+        <th style="width: 16%;">Current state</th>
+        <th style="width: 38%;">Why optional</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="pbg-refs">§6.2-007</td>
+        <td class="pbg-title">§13 step-1 harness confirms cascaded plugin survives update_chat_ctx round-trip</td>
+        <td class="pbg-state">@stubbed:<br>observation_step_runtime<br>+ ⏳ in arch</td>
+        <td class="pbg-action"><span class="pbg-tag pbg-optional">OPTIONAL</span>Path A used a prepend-to-user_input workaround (see __main__.py:184-187). Phase 1 could try update_chat_ctx properly + un-stub if it works. <strong>Recommended skip</strong> — independent of D1-D5; better as its own follow-up so the failure mode (if any) is isolated.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>F. Consolidation — nothing to remove</h4>
+  <p style="font-size: 13px; color: var(--text-dim, #87867F); line-height: 1.6; margin: 10px 0 6px;">
+    Audited the existing MCP/path-B-relevant commitments (§1.0-017..027, §2.1-009..011, §3.4-001..017, §9.0-001..009, §6.2-007). <strong>No commitments are obsoleted by Phase 1.</strong> The Path A harness path remains the regression-pin path for the conversation contract; Phase 1 adds the production tool transport without retiring any current scenario. The 5 un-stub / strengthen actions in section A are the only modifications to existing scenarios.
+  </p>
+
+</div>

@@ -1,0 +1,23 @@
+/* dark-blueprint — dark-first, mono-primary. For technical / system-state pages. Uses system fonts. */
+:root {
+  --font-display: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --font-body:    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2128;
+  --surface-elevated: #21262d;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(255, 255, 255, 0.16);
+  --text: #c9d1d9;
+  --text-dim: #7d8590;
+
+  --accent:    #79c0ff;  --accent-dim:   rgba(121, 192, 255, 0.10);
+  --good:      #56d364;  --good-dim:     rgba(86, 211, 100, 0.10);
+  --cool:      #a5d6ff;  --cool-dim:     rgba(165, 214, 255, 0.10);
+  --warn:      #d29922;  --warn-dim:     rgba(210, 153, 34, 0.10);
+  --decision:  #ff7b72;  --decision-dim: rgba(255, 123, 114, 0.10);
+}
+
+/* dark-blueprint stays dark-first regardless of system pref */
