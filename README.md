@@ -54,9 +54,9 @@ This diagram illustrates how all the packaged skills (`html-discussion`, `ping-p
 ```mermaid
 graph TD
     subgraph Planning ["1. Scaffolding & Planning (HTML-Discussion)"]
-        A["/discussion &lt;slug&gt;"] -->|Scaffold Draft| B["docs/discussions/&lt;date&gt;-&lt;slug&gt;.html"]
+        A["/discussion <slug>"] -->|Scaffold Draft| B["docs/discussions/<date>-<slug>.html"]
         B -->|Append components via bin/ scripts| C["Add comparison tables, grids, KPIs"]
-        C -->|Decisions made| D["/crystallize &lt;slug&gt;"]
+        C -->|Decisions made| D["/crystallize <slug>"]
         D -->|Propose spec changes| E["Update docs/architecture.html & features/"]
     end
 
@@ -76,10 +76,10 @@ graph TD
     end
 
     subgraph Shipping ["3. Traceability & Ship"]
-        M -->|All scenarios completed| N["/discussion ship &lt;slug&gt;"]
+        M -->|All scenarios completed| N["/discussion ship <slug>"]
         N -->|Manifest updated to shipped| O["Stamp shipped_at & shipped_commit"]
         O -->|Re-indexing| P["docs/discussions/INDEX.html Rebuilt"]
-        P -->|Executable provenance| Q["@scope:&lt;slug&gt; tags remain on features forever"]
+        P -->|Executable provenance| Q["@scope:<slug> tags remain on features forever"]
     end
 
     classDef planning fill:#25252e,stroke:#d4a853,stroke-width:2px,color:#fff;
