@@ -1,6 +1,7 @@
 ---
 name: subagent-memory
 description: "Use in any subagent whose frontmatter sets memory to project, user, or local. Observational memory discipline: captures what was learned each invocation as dated bullets in MEMORY.md, compressing via a reflection pass before the file hits the 200-line harness injection cliff. Mirrors the working_memory style: priority-emoji bullets, date grouping."
+license: MIT
 ---
 
 # Subagent observational memory
@@ -22,11 +23,12 @@ If a particular invocation has nothing observation-worthy (trivial lookup, repet
 
 ## File layout
 
-Your memory directory contains exactly one file:
+Your memory directory contains exactly one file — `MEMORY.md`. Where the directory lives depends on the `memory:` scope your agent declared:
 
 ```
-.claude/agent-memory/<your-name>/
-└── MEMORY.md
+memory: project → .claude/agent-memory/<your-name>/MEMORY.md        (shareable via version control)
+memory: local   → .claude/agent-memory-local/<your-name>/MEMORY.md  (project-specific, not checked in)
+memory: user    → ~/.claude/agent-memory/<your-name>/MEMORY.md      (follows you across projects)
 ```
 
 There are no topic files, no frontmatter on entries, no index. The whole file is observations grouped by date. The harness reads the first 200 lines / 25KB at startup; reflection keeps you well below that cliff.

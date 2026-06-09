@@ -38,3 +38,7 @@ skills:
 ```
 
 When the subagent is invoked, it will automatically load and follow the memory guidelines defined in this skill.
+
+Notes:
+- Claude Code auto-enables the Read, Write, and Edit tools for memory management whenever `memory:` is set — no need to add them to a restricted `tools` list just for `MEMORY.md`.
+- Scope paths: `project` → `.claude/agent-memory/` (shareable via version control), `local` → `.claude/agent-memory-local/` (not checked in), `user` → `~/.claude/agent-memory/` (cross-project).
