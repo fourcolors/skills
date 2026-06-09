@@ -1,6 +1,6 @@
 ---
 name: html-discussion
-description: Use when the user wants an HTML discussion artifact — a page generated and revised over the life of a conversation. Best for planning a feature, comparing options, surfacing decisions with options grids, recapping analysis, dogfooding a design. Pages save to docs/discussions/<YYYY-MM-DD>-<slug>.html with a sibling .json manifest as source of truth. Sections are byte-addressable by ID via shell scripts in bin/, so revisions cost ~10 tokens each instead of re-reading a 30KB file. Not a build system; not a replacement for visual-explainer.
+description: Use when the user wants an HTML discussion artifact — a page generated and revised over the life of a conversation. Best for planning a feature, comparing options, surfacing decisions with options grids, recapping analysis, dogfooding a design. Pages save to docs/discussions/<YYYY-MM-DD>-<slug>.html with a sibling .json manifest as source of truth. Sections are byte-addressable by ID via shell scripts in bin/, so revisions cost ~10 tokens each instead of re-reading a 30KB file. Not a build system; not for one-shot diagrams that never get revised.
 license: MIT
 ---
 
@@ -8,7 +8,7 @@ license: MIT
 
 A script-driven HTML discussion skill. Pages live as `docs/discussions/<YYYY-MM-DD>-<slug>.html` plus a sibling `.json` manifest. **Always mutate via `bin/` scripts; never re-read the full HTML file.** The manifest is source of truth; HTML is rendered from it. `new-page.sh` auto-prepends today's date if you don't include one; the resulting date-prefixed slug is what subsequent commands take.
 
-**Scope lifecycle**: The manifest carries a `status` field (`draft` / `active` / `shipped` / `archived`) that can be used to track the progress of design or system discussions. Lifecycle transitions: `new-page.sh` creates a `draft` status, which can be updated to `active` during planning, and finally flipped to `shipped` using `ship-page.sh` (which stamps `shipped_at` and `shipped_commit` SHA). Optionally, you can configure your project's custom traceability scripts to auto-generate an `INDEX.html` index list of all discussion files.
+**Scope lifecycle**: The manifest carries a `status` field (`draft` / `active` / `shipped` / `archived`) that can be used to track the progress of design or system discussions. Lifecycle transitions: `new-page.sh` creates a `draft` status, which can be updated to `active` during planning, and finally flipped to `shipped` using `ship-page.sh` (which stamps `shipped_at` and `shipped_commit` SHA). If the project has an INDEX builder (`DISCUSSION_INDEX_BUILDER` env var, default `scripts/traceability/build.py`), `ship-page.sh` also rebuilds `docs/discussions/INDEX.html`; otherwise it skips that step with a note.
 
 ## When to invoke
 
@@ -20,32 +20,34 @@ A script-driven HTML discussion skill. Pages live as `docs/discussions/<YYYY-MM-
 
 ## Workflow (4 steps)
 
-1. **Add the template** — `bin/new-page.sh <slug> [--theme <name>]`. Default theme is `warm-paper`.
-2. **Design the parts** — sketch the section list with the user in chat
-3. **Load in elements** — call `bin/add-section.sh <slug> <snippet> --fills key=val,...` for each section
-4. **Modify** — call `bin/move.sh`, `bin/swap.sh`, `bin/replace.sh` as the discussion evolves; never re-read the file
+1. **Add the template** — `<skill-dir>/bin/new-page.sh <slug> [--theme <name>]`. Default theme is `warm-paper`.
+2. **Design the parts** — `ls <skill-dir>/snippets/`, then sketch the section list with the user in chat
+3. **Load in elements** — call `<skill-dir>/bin/add-section.sh <slug> <snippet> --fills key=val,...` for each section
+4. **Modify** — call `move.sh` to reorder; for mutations the scripts don't cover yet (swap, replace, delete), edit the `.json` manifest with `jq` and run `render.sh` — never hand-edit or re-read the HTML
 
-After every creation or mutation, tell the user the file path so they can open it in a browser.
+After every creation or mutation, open the page in the default browser (`open` on macOS, `xdg-open` on Linux) and tell the user the file path.
 
 ## Command surface
 
-All scripts live in `./bin/` and operate on `docs/discussions/<slug>.html` + `docs/discussions/<slug>.json` (where `<slug>` is the full date-prefixed name, e.g., `2026-05-24-my-spike`).
+Scripts live in this skill's `bin/` directory — `<skill-dir>` below means the install location (`.claude/skills/html-discussion/` project-scoped, `~/.claude/skills/html-discussion/` global), so resolve script paths from there, not the CWD. Run them from the project root: they operate on `docs/discussions/<slug>.html` + `docs/discussions/<slug>.json` (where `<slug>` is the full date-prefixed name, e.g., `2026-05-24-my-spike`).
 
 | Command                                             | Purpose                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------- | ---------------------- |
+| --------------------------------------------------- | ------------------------------------------------------------- |
 | `new-page.sh <slug> [--theme name]`                 | Create page + manifest (initial `status: "draft"` + lifecycle fields). Theme defaults to `warm-paper`. |
 | `list.sh <slug>`                                    | Print manifest summary (section IDs + snippet types)          |
 | `add-section.sh <slug> <snippet> [--fills k=v,...]` | Append a snippet to the page; update manifest                 |
-| `move.sh <slug> <id> --before                       | --after <other>`                                              | Reorder sections by ID |
+| `move.sh <slug> <id> --before\|--after <other>`     | Reorder sections by ID                                        |
 | `render.sh <slug>`                                  | Re-emit HTML from manifest + snippets + active theme          |
-| `ship-page.sh <slug> [--commit sha] [--no-banner] [--no-rebuild]` | Flip manifest `status → "shipped"`, stamp `shipped_at` + `shipped_commit` (HEAD or override), append merged-banner, rebuild INDEX. Idempotent. Used by `/discussion ship <slug>`. |
+| `ship-page.sh <slug> [--commit sha] [--no-banner] [--no-rebuild]` | Flip manifest `status → "shipped"`, stamp `shipped_at` + `shipped_commit` (HEAD or override), append merged-banner, rebuild INDEX if the project has a builder. Idempotent. Used by `/discussion ship <slug>`. |
+| `scope-status.sh [<slug>]`                          | Read-only scope summary: manifest status, `@scope:`-tagged scenarios, gating tags, next step. Optional — for projects using `@scope:` traceability tags on `features/*.feature` |
+| `scope-lint.sh`                                     | Read-only consistency check: orphaned `@scope:` tags, `scope_owns` drift. Optional — same traceability convention |
 
-More scripts (swap, copy, paste, delete, replace, clip, save-snippet) will be added by promotion as needs surface.
+More scripts (swap, copy, paste, delete, replace, clip, save-snippet) will be added by promotion as needs surface — until then, cover those mutations by editing the manifest with `jq` + `render.sh`.
 
 ## Themes (in `./themes/`)
 
-- **`plex-paper.css`** (default) — IBM Plex Serif/Sans/Mono via Google Fonts. Warm editorial paper palette with distinctive Plex letterforms.
-- **`warm-paper.css`** — system fonts only (Georgia / system-ui / ui-monospace). Thariq-inspired ivory/clay/olive palette. Zero network round-trips.
+- **`warm-paper.css`** (default) — system fonts only (Georgia / system-ui / ui-monospace). Ivory/clay/olive palette. Zero network round-trips.
+- **`plex-paper.css`** — IBM Plex Serif/Sans/Mono via Google Fonts. Warm editorial paper palette with distinctive Plex letterforms.
 - **`dark-blueprint.css`** — dark-first, system mono primary, cool blue accent. For technical / system-state pages.
 - **`liquid-glass.css`** — Dark-first; gold-accented; Cormorant Garamond display + DM Sans body + JetBrains Mono. Use for high-contrast brand-aligned modern system design and technical pages.
 - **`tactile.css`** — dark neomorphism. Surfaces share bg color; depth comes from a consistent two-shadow pair (no borders). Orange accent, mono labels. Use when the artifact should feel like a physical control surface.
@@ -55,7 +57,18 @@ Themes define CSS custom properties only; the shell snippet defines the layout/c
 ## Snippets (in `./snippets/`)
 
 - **`_shell.html`** — the page shell + sticky-sidebar TOC + main column + all component CSS. Always present.
-- Additional snippets are added by promotion. No usage tracking — promotion is manual when the user signals a pattern is worth keeping.
+- **`header.html`** — page header. Fills: `EYEBROW`, `H1`, `SUBTITLE`.
+- **`numbered-section.html`** — numbered section heading + lede. Fills: `NUM`, `TITLE`, `LEDE`.
+- **`callout.html`** — left-border tinted aside. Fills: `TITLE`, `BODY`.
+- **`compare-table.html`** — generic N-column comparison table; Edit-replace the rows after insertion.
+- **`grid-3-cards.html`** — 3-column recessed-card grid. Fills: `C{1,2,3}_{TAG,TITLE,BODY}`.
+- **`kpi-strip.html`** — 4-column headline metrics row. Fills: `KPI{1..4}_{LABEL,VALUE,DELTA,CLASS}`.
+- **`timeline.html`** — vertical date/event list; Edit-replace the entries after insertion.
+- **`annotated-code.html`** — code block with margin notes; good for PR-diff walkthroughs.
+- **`footer-meta.html`** — page footer. Fills: `STRONG`, `BODY`.
+- **`is-isnt-cards.html`**, **`wireframe-arch.html`** — content-baked examples of promoted patterns; copy and adapt rather than slot-fill.
+
+`ls` the snippets directory before designing sections — new snippets are added by promotion when a pattern proves worth keeping. No usage tracking; promotion is manual when the user signals a pattern is worth keeping.
 
 ## Conventions
 
@@ -103,7 +116,3 @@ Themes define CSS custom properties only; the shell snippet defines the layout/c
 - HTML: `docs/discussions/<YYYY-MM-DD>-<slug>.html`
 - Manifest: `docs/discussions/<YYYY-MM-DD>-<slug>.json`
 - Stash (future, cross-page clipboard): `.scratch/.stash/<name>.html` (stays ephemeral — cross-page clipboard isn't user-facing)
-
-## Other
-
-After every iteration open the HTML file in the default browser

@@ -14,7 +14,9 @@
 #      truth (the tags).
 #
 # Exit 0 if clean, 1 if any orphans or drift found.
-# See docs/WORKFLOW.md "Lint discipline — orphan detection".
+#
+# Optional helper — only useful in projects that tag Gherkin scenarios in
+# features/*.feature with @scope:<slug> for discussion↔test traceability.
 #
 # Compatible with bash 3.2 (macOS default) — no associative arrays.
 

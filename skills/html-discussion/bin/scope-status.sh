@@ -2,7 +2,10 @@
 # scope-status.sh [<slug>]
 #
 # One-shot scope summary. Shows: manifest status, owned commitments,
-# tagged scenarios in features/, what features_runner would execute.
+# tagged scenarios in features/, what the scope runner would execute.
+#
+# Optional helper — only useful in projects that tag Gherkin scenarios in
+# features/*.feature with @scope:<slug> for discussion↔test traceability.
 #
 # No arg: auto-detects the most-recently-updated active manifest.
 # With slug: uses that explicit slug.
@@ -87,7 +90,7 @@ else
   echo "  (none tagged yet — run /crystallize to wire features ↔ scope)"
 fi
 
-# Stubbed/notwired gating (the 4-condition AND from features/CLAUDE.md)
+# Stubbed/notwired gating (per the project's gating conventions)
 echo ""
 gating=$(grep -A1 "@scope:$slug" features/*.feature 2>/dev/null \
   | grep -oE "@stubbed:[a-z_]+|@notwired:[a-z_]+" \
@@ -101,20 +104,27 @@ else
   fi
 fi
 
-# Runner verdict (only meaningful if scenarios exist)
+# Runner verdict (only meaningful if scenarios exist). The scope runner is
+# project-specific and OPTIONAL — point SCOPE_RUNNER at an executable that
+# accepts a "@scope:<slug>" filter argument.
+RUNNER="${SCOPE_RUNNER:-}"
 if (( n_scenarios > 0 )); then
   echo ""
   echo "Runner verdict:"
-  if runner_out=$(elixir .claude/skills/features/scripts/features_runner.exs "@scope:$slug" 2>&1); then
-    verdict=$(echo "$runner_out" | grep -E "scenarios \(filter:" | tail -1 || true)
-    if [[ -n "$verdict" ]]; then
-      echo "  $verdict"
+  if [[ -n "$RUNNER" && -f "$RUNNER" ]]; then
+    if runner_out=$("$RUNNER" "@scope:$slug" 2>&1); then
+      verdict=$(echo "$runner_out" | grep -E "scenarios \(filter:" | tail -1 || true)
+      if [[ -n "$verdict" ]]; then
+        echo "  $verdict"
+      else
+        echo "  (runner produced no summary line — check output manually)"
+      fi
     else
-      echo "  (runner produced no summary line — check output manually)"
+      echo "  ⚠  runner failed; run manually:"
+      echo "     $RUNNER @scope:$slug"
     fi
   else
-    echo "  ⚠  runner failed; run manually:"
-    echo "     elixir .claude/skills/features/scripts/features_runner.exs @scope:$slug"
+    echo "  (no SCOPE_RUNNER configured — run your project's test suite filtered by @scope:$slug)"
   fi
 fi
 

@@ -19,13 +19,15 @@ Then say: "Opened INDEX. Top of the list = most active threads. Click into one t
 .claude/skills/html-discussion/bin/new-page.sh "$ARGUMENTS"
 ```
 
+(For global installs, the skill lives at `~/.claude/skills/html-discussion/` instead.)
+
 Capture the printed slug (the line beginning `Slug for subsequent commands:`). Then open the file:
 
 ```
 open docs/discussions/<that-slug>.html
 ```
 
-Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in browser. Manifest initialized with `status: \"draft\"`. Tell me what you want to think through — I'll add sections as we go using the html-discussion skill (add-section.sh, render.sh, move.sh). When the discussion's decisions crystallize, run `/crystallize docs/discussions/<slug>.html` to sync the catalog (and flip the manifest to `active`), then `/goal complete docs/discussions/<slug>.html` to dispatch implementation. When the work ships, run `/discussion ship <slug>` to flip the manifest to `shipped` and stamp the commit."
+Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in browser. Manifest initialized with `status: \"draft\"`. Tell me what you want to think through — I'll add sections as we go using the html-discussion skill (add-section.sh, render.sh, move.sh). When the discussion's decisions crystallize, run `/crystallize docs/discussions/<slug>.html` to sync the catalog (and flip the manifest to `active`), then dispatch implementation with your project's workflow (e.g., the ping-pong skill from this pack). When the work ships, run `/discussion ship <slug>` to flip the manifest to `shipped` and stamp the commit."
 
 **Mode 3 — `ship <slug>` (the work shipped):** flip the manifest to `status: "shipped"`, stamp `shipped_at` + `shipped_commit` from `git rev-parse HEAD`, append a merged-banner to the HTML if absent, and rebuild INDEX. Tags on features (`@scope:<slug>`) stay in place as permanent provenance.
 
@@ -37,7 +39,7 @@ Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in
 
 The script is idempotent — re-running on an already-shipped slug warns and exits 0. Optional flags (rarely needed): `--commit <sha>` to override HEAD, `--no-banner` to skip the visual marker, `--no-rebuild` to skip the INDEX regeneration.
 
-Then say: "`<slug>` is shipped. Manifest stamped with date + commit, banner appended, INDEX rebuilt. Verify at `open docs/discussions/INDEX.html` — should be in the **Shipped** section now. `@scope:<slug>` tags on features stayed in place for future revalidation via your project's test runner filtering by the tag (e.g., `elixir .claude/skills/features/scripts/features_runner.exs @scope:<slug>` if using Elixir feature runners)."
+Then say: "`<slug>` is shipped. Manifest stamped with date + commit, banner appended, INDEX rebuilt (if the project has an INDEX builder). Verify at `open docs/discussions/INDEX.html` — should be in the **Shipped** section now. `@scope:<slug>` tags on features stayed in place for future revalidation via your project's test runner filtered by the tag."
 
 ## Conflict handling
 

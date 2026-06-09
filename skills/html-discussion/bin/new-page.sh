@@ -55,7 +55,6 @@ mv "$tmp" "$out_html"
 # - shipped_at / shipped_commit / archived_reason populated by lifecycle commands.
 # - scope_owns is a convenience list of §X.Y-NNN commitments this scope owns
 #   (source of truth for scenario membership is the @scope:<slug> tag set).
-# See docs/WORKFLOW.md "Scope lifecycle" for the full schema.
 jq -n --arg slug "$slug" --arg theme "$theme" --arg now "$(date -u +%FT%TZ)" \
   '{
      slug: $slug,

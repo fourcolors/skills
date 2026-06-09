@@ -6,23 +6,38 @@
 #   2. Stamp shipped_at (UTC ISO date) + shipped_commit (HEAD or --commit)
 #   3. Append a <div class="merged-banner"> to the HTML (unless --no-banner
 #      or one already exists)
-#   4. Rebuild INDEX.html via build.py (unless --no-rebuild)
+#   4. Rebuild INDEX.html via the project's INDEX builder, if one exists
+#      (unless --no-rebuild)
 #
 # @scope:<slug> tags on features are NOT stripped — they stay permanently
-# as provenance. See docs/WORKFLOW.md "Tags as provenance".
+# as provenance.
 #
 # Idempotent: re-running on an already-shipped slug is a no-op (warns and
 # exits 0), so it's safe in scripted flows.
 #
-# Rebuild runs unconditionally so a stale INDEX from a prior crashed run
-# (e.g., manifest mutation succeeded but build.py was SIGKILL'd / OOM'd)
-# gets recovered on re-run. build.py is idempotent — zero diff on
-# unchanged input — so re-running it is cheap.
+# The INDEX builder is project-specific and OPTIONAL. Point
+# DISCUSSION_INDEX_BUILDER at yours; when the file doesn't exist the rebuild
+# step is skipped with a note. When present, the rebuild runs both before the
+# early-exit (recovering a stale INDEX from a prior crashed run) and after
+# the mutation — so the builder must be idempotent.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
+
+INDEX_BUILDER="${DISCUSSION_INDEX_BUILDER:-scripts/traceability/build.py}"
+rebuild_index() {
+  if [[ -f "$INDEX_BUILDER" ]]; then
+    case "$INDEX_BUILDER" in
+      *.py) python3 "$INDEX_BUILDER" > /dev/null ;;
+      *)    "$INDEX_BUILDER" > /dev/null ;;
+    esac
+    echo "✓ INDEX rebuilt"
+  else
+    echo "  (no INDEX builder at $INDEX_BUILDER — skipping INDEX rebuild)"
+  fi
+}
 
 slug="${1:-}"
 [[ -n "$slug" ]] || { echo "usage: ship-page.sh <slug> [--commit <sha>] [--no-banner] [--no-rebuild]" >&2; exit 1; }
@@ -46,14 +61,12 @@ html="docs/discussions/${slug}.html"
 [[ -f "$json" ]] || { echo "manifest missing: $json" >&2; exit 1; }
 [[ -f "$html" ]] || { echo "html missing: $html" >&2; exit 1; }
 
-# Always rebuild INDEX first. build.py is idempotent (zero diff on unchanged
-# input per its docstring), so running it before the early-exit costs nothing
-# in the happy case and recovers a stale INDEX if a prior run crashed between
-# the manifest flip and the rebuild step.
+# Always attempt the rebuild first: it costs nothing in the happy case and
+# recovers a stale INDEX if a prior run crashed between the manifest flip
+# and the rebuild step.
 if [[ "$do_rebuild" == "1" ]]; then
   echo "↻ rebuilding INDEX (pre-flight recovery pass)..."
-  python3 scripts/traceability/build.py > /dev/null
-  echo "✓ INDEX rebuilt"
+  rebuild_index
 fi
 
 current_status=$(jq -r '.status // "active"' "$json")
@@ -95,8 +108,7 @@ fi
 
 if [[ "$do_rebuild" == "1" ]]; then
   echo "↻ rebuilding INDEX (post-mutation)..."
-  python3 scripts/traceability/build.py > /dev/null
-  echo "✓ INDEX rebuilt"
+  rebuild_index
 fi
 
 echo ""
