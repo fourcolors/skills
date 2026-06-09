@@ -1,17 +1,18 @@
 ```text
- ██████╗ ██████╗ ██╗   ██║██████╗  ██████╗  ██████╗ ██╗      ██████╗ ██████╗ ███████╗
-██╔════╝██╔═══██╗██║   ██║██╔══██╗██╔════╝ ██╔═══██╗██║     ██╔═══██╗██╔══██╗██╔════╝
-██║     ██║   ██║██║   ██║██████╔╝██║      ██║   ██║██║     ██║   ██║██████╔╝███████╗
-██║     ██║   ██║██║   ██║██╔══██╗██║      ██║   ██║██║     ██║   ██║██╔══██╗╚════██║
-╚██████╗╚██████╔╝╚██████╔╝██║  ██║╚██████╗ ╚██████╔╝███████╗╚██████╔╝██║  ██║███████║
- ╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
-                                                                                   
-                  ███████╗██╗  ██╗██╗██║     ██║     ███████╗                      
-                  ██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝                      
-                  ███████╗█████╔╝ ██║██║     ██║     ███████╗                      
-                  ╚════██║██╔═██╗ ██║██║     ██║     ╚════██║                      
-                  ███████║██║  ██╗██║███████╗███████╗███████║                      
-                  ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝                      
+███████╗ ██████╗ ██╗   ██╗██████╗  ██████╗ ██████╗ ██╗      ██████╗ ██████╗ ███████╗
+██╔════╝██╔═══██╗██║   ██║██╔══██╗██╔════╝██╔═══██╗██║     ██╔═══██╗██╔══██╗██╔════╝
+█████╗  ██║   ██║██║   ██║██████╔╝██║     ██║   ██║██║     ██║   ██║██████╔╝███████╗
+██╔══╝  ██║   ██║██║   ██║██╔══██╗██║     ██║   ██║██║     ██║   ██║██╔══██╗╚════██║
+██║     ╚██████╔╝╚██████╔╝██║  ██║╚██████╗╚██████╔╝███████╗╚██████╔╝██║  ██║███████║
+╚═╝      ╚═════╝  ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝
+
+                    ███████╗██╗  ██╗██╗██╗     ██╗     ███████╗
+                    ██╔════╝██║ ██╔╝██║██║     ██║     ██╔════╝
+                    ███████╗█████╔╝ ██║██║     ██║     ███████╗
+                    ╚════██║██╔═██╗ ██║██║     ██║     ╚════██║
+                    ███████║██║  ██╗██║███████╗███████╗███████║
+                    ╚══════╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝
+```
 
 # fourcolors skills
 
@@ -54,9 +55,9 @@ This diagram illustrates how all the packaged skills (`html-discussion`, `ping-p
 ```mermaid
 graph TD
     subgraph Planning ["1. Scaffolding & Planning (HTML-Discussion)"]
-        A["/discussion <slug>"] -->|Scaffold Draft| B["docs/discussions/<date>-<slug>.html"]
+        A["/discussion {slug}"] -->|Scaffold Draft| B["docs/discussions/{date}-{slug}.html"]
         B -->|Append components via bin/ scripts| C["Add comparison tables, grids, KPIs"]
-        C -->|Decisions made| D["/crystallize <slug>"]
+        C -->|Decisions made| D["/crystallize {slug}"]
         D -->|Propose spec changes| E["Update docs/architecture.html & features/"]
     end
 
@@ -66,7 +67,7 @@ graph TD
         G -->|Driver takes over| H["pp-pong (Driver)"]
         H -->|Implement code until tests pass| I["GREEN State (Passing Test)"]
         I -->|Audit is triggered| J["pp-auditor (Sanity Check)"]
-        J -->|5-Axis Check: On task, Correct, Right, Smart, Extra mile| K{"Audit PASS?"}
+        J -->|Blocking axes: On task, Correct, Right, Smart + Extra-mile advisory| K{"Audit PASS?"}
         K -->|FAIL| L["Re-dispatch ping (spec gap) or pong (impl gap)"]
         L --> F
         K -->|PASS| M["Merge and update GOAL.md"]
@@ -76,10 +77,10 @@ graph TD
     end
 
     subgraph Shipping ["3. Traceability & Ship"]
-        M -->|All scenarios completed| N["/discussion ship <slug>"]
+        M -->|All scenarios completed| N["/discussion ship {slug}"]
         N -->|Manifest updated to shipped| O["Stamp shipped_at & shipped_commit"]
         O -->|Re-indexing| P["docs/discussions/INDEX.html Rebuilt"]
-        P -->|Executable provenance| Q["@scope:<slug> tags remain on features forever"]
+        P -->|Executable provenance| Q["@scope:{slug} tags remain on features forever"]
     end
 
     classDef planning fill:#25252e,stroke:#d4a853,stroke-width:2px,color:#fff;
@@ -106,10 +107,14 @@ skills/
     ├── ping-pong/
     │   ├── SKILL.md       <-- Orchestrator guidelines
     │   ├── README.md      <-- Human instructions
-    │   └── agents/        <-- Subagent definitions
-    │       ├── pp-ping.md
-    │       ├── pp-pong.md
-    │       └── pp-auditor.md
+    │   ├── agents/        <-- Subagent definitions
+    │   │   ├── pp-ping.md
+    │   │   ├── pp-pong.md
+    │   │   └── pp-auditor.md
+    │   └── references/    <-- Loaded on demand by the lead, not at trigger time
+    │       ├── briefs.md
+    │       ├── audit-modes.md
+    │       └── monitoring.md
     ├── subagent-memory/
     │   ├── SKILL.md       <-- Memory rules
     │   ├── README.md      <-- Human instructions
