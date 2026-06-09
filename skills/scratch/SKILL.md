@@ -1,6 +1,7 @@
 ---
 name: scratch
-description: Use when the user asks what a project `.scratch/` folder is for, wants a safe place for temporary scripts/artifacts, or needs guidance on promoting ad-hoc work into committed project code.
+description: Use when creating temporary scripts, debug artifacts, or one-off investigation files in a project (they belong in the project-local `.scratch/` folder), when the user asks what `.scratch/` is for, or when deciding whether to delete, keep, or promote ad-hoc work into committed project code.
+license: MIT
 ---
 
 # scratch
@@ -41,9 +42,10 @@ If `.scratch/README.md` is missing, create it from this skill's template if avai
 ```bash
 mkdir -p .scratch
 cp .claude/skills/scratch/templates/README.md .scratch/README.md
+grep -qxF '.scratch/' .gitignore 2>/dev/null || echo '.scratch/' >> .gitignore
 ```
 
-If the skill is installed globally instead of project-locally, copy the template manually from the installed skill directory or write the rules above into `.scratch/README.md`.
+The gitignore line matters: the template promises "this folder is gitignored," and that's the backstop against committing throwaway artifacts. If the skill is installed globally instead of project-locally, copy the template manually from the installed skill directory or write the rules above into `.scratch/README.md`.
 
 ## Output style
 
