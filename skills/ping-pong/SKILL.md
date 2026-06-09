@@ -1,6 +1,8 @@
 ---
 name: ping-pong
-description: Simulates pair programming with a third-party auditor for autonomous execution of work. Point it at a task, a list of tasks, or a plan with scoped scenarios — the lead decomposes as needed and dispatches a per-scenario trio (ping = navigator, pong = driver, auditor = QC). Use when prior attempts produced premature-done or wrong-diagnosis loops, or when the user invokes /ping-pong.
+description: Test-first pair programming with an independent auditor, for autonomous execution of implementation work. Point it at a task, a list of tasks, or a plan with scoped scenarios — the lead decomposes as needed and dispatches a per-scenario trio (pp-ping = navigator, writes the failing test; pp-pong = driver, implements to green; pp-auditor = QC). Use when the user invokes /ping-pong, asks to execute a plan or task list autonomously with TDD discipline, wants implementation with built-in independent review, or when prior attempts produced premature-done or wrong-diagnosis loops.
+argument-hint: "[task | path/to/plan.md | task list]"
+license: MIT
 ---
 
 # Ping-Pong
@@ -58,7 +60,7 @@ This split keeps the spec executable and committable; the cache exists only as l
 |---|---|---|---|
 | `pp-ping` | **Navigator** | Per-scenario spec writer. Discovers project test conventions and writes a failing test in-place. Test docstring carries the BDD scenario; assertions carry the acceptance criteria. The test IS the spec. | `.claude/agents/pp-ping.md` |
 | `pp-pong` | **Driver** | Implementer. Reads the failing test from the codebase, implements until it passes (RED→GREEN), writes evidence to the cycle cache. | `.claude/agents/pp-pong.md` |
-| `pp-auditor` | **Over-the-shoulder QC** | Reads the diff, reproduces the test, checks pong's work on five axes: **on task, correct, right, smart, extra mile**. Asks "is this dumb?" — not just a test runner. | `.claude/agents/pp-auditor.md` |
+| `pp-auditor` | **Over-the-shoulder QC** | Reads the diff, reproduces the test, checks pong's work on four blocking axes — **on task, correct, right, smart** — plus an advisory **extra mile** axis. Asks "is this dumb?" — not just a test runner. | `.claude/agents/pp-auditor.md` |
 
 These exist as predefined agents — not inlined as on-the-fly prompts — so their `MEMORY.md` accumulates craft over time. After 50 audits the auditor knows which model catches which class of bug; that compounding is the load-bearing reason to predefine.
 
@@ -68,13 +70,15 @@ The lead calls `TeamCreate({team_name: "pp-<work-id>"})` once per work session. 
 
 **On the team** — `pp-ping` + `pp-pong`. The pair can `SendMessage` each other mid-cycle: if pong hits an ambiguous assertion, it asks ping directly instead of bouncing through the lead. This is the pair-programming model — navigator and driver coordinate without an intermediary.
 
-**Off the team** — `pp-auditor`. Reports only to the lead. If the auditor were on the team, ping could ask "would this pass your bar?" and pong could ask "is this hygienic enough?" — both would compromise independence. The audit's value comes from sitting outside the pair's conversation. Same reason cross-model auditors (Gemini, Codex) write verdicts to separate files before reading each other's.
+**Off the team** — `pp-auditor`. Reports only to the lead. If the auditor were on the team, ping could ask "would this pass your bar?" and pong could ask "is this hygienic enough?" — both would compromise independence. The audit's value comes from sitting outside the pair's conversation. Same reason cross-model auditors (Gemini, Codex) write verdicts to separate files before reading each other's. Because the auditor is spawned as a plain subagent, its tool allowlist explicitly includes `TaskGet`, `TaskUpdate`, and `Write` — off-team agents get nothing auto-granted.
 
-**Spawn fresh per scenario, not long-lived workers.** Each scenario gets a new `Agent({subagent_type: "pp-ping", ...})` invocation — fresh context, no anchoring on prior cycles. The `team_name` carries the identity and SendMessage routing; the member is ephemeral. Memory persists via `MEMORY.md`; context resets every dispatch. This is the difference between a *team* (durable namespace + routing) and *workers* (ephemeral spawns within it).
+**Spawn fresh per scenario, not long-lived workers.** Each scenario gets a new `Agent({subagent_type: "pp-ping", ...})` invocation — fresh context, no anchoring on prior cycles. The `team_name` carries the identity and SendMessage routing; the member is ephemeral. Memory persists via `MEMORY.md`; context resets every dispatch.
+
+**Platform gate:** agent teams (TeamCreate / SendMessage) are an experimental Claude Code feature (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`). Without teams, the workflow still runs: skip TeamCreate, dispatch the trio as plain subagent spawns, and the task descriptions remain the coordination bus. Workers know to return early with their question instead of messaging (it's in their discipline rules); the lead answers and re-dispatches. Or just use solo-lead mode, which needs none of this.
 
 ## Two modes: dispatched vs solo lead
 
-The skill describes a multi-agent workflow, but the lead has a choice about how literal to be. The **discipline** doesn't change between modes (failing test first, RED→GREEN, five-axis check) — only the **ceremony** scales.
+The skill describes a multi-agent workflow, but the lead has a choice about how literal to be. The **discipline** doesn't change between modes (failing test first, RED→GREEN, per-axis audit) — only the **ceremony** scales.
 
 **Dispatched mode** — lead spawns `pp-ping`, `pp-pong`, `pp-auditor` as separate `Agent` invocations per scenario. Full ceremony: `TeamCreate` + `TaskCreate` per scenario + structured `## Ping (spec)` / `## Pong (impl)` / `## Auditor (verdict)` sections on task descriptions. Agent memory compounds across cycles via per-agent `MEMORY.md`. Use when:
 - The plan spans many scenarios (5+) and the lead's own context would get cluttered.
@@ -93,51 +97,60 @@ The choice can be per-work-session OR per-scenario inside one session: you might
 ## What the lead does
 
 ```
-1. TeamCreate({team_name: "pp-<work-id>"})
+0. PRE-FLIGHT (once per work session):
+   - pp-ping / pp-pong / pp-auditor registered? Check .claude/agents/pp-*.md
+     (or ~/.claude/agents/). Missing → STOP; give the user the bootstrap
+     commands from this skill's README. Never improvise inline substitutes.
+   - subagent-memory skill installed? Missing → warn once and continue;
+     agents still run, memory discipline degrades.
+   - Agent teams available? If not → plain spawns + lead-mediated questions,
+     or solo-lead mode (see "Platform gate" above).
+   - Planning any auditor_mode beyond claude-solo? Verify the gemini/codex
+     CLIs (or their orchestrator agents) exist; degrade to claude-solo with
+     a logged warning if not.
+   - Ensure .claude/ping-pong/ is gitignored in the host repo (append if missing).
+1. TeamCreate({team_name: "pp-<work-id>"})   (dispatched mode, teams available)
 2. Write a SMART goal at .claude/ping-pong/<work-id>/GOAL.md.
-   This is the lead's FIRST move — flexibility of input shape doesn't mean
-   absence of goal. Even a single-task input gets a goal. See "Goal definition"
-   below for the SMART format.
+   This is the lead's FIRST artifact — flexibility of input shape doesn't mean
+   absence of goal. Even a single-task input gets a goal. See "Goal definition".
 3. Take the work — a single task, a list, or a plan with pre-scoped scenarios.
    Decompose what's coarse, take what's pre-scoped, and emit one TaskCreate per scenario:
    - Each scenario: Given/When/Then + predictability check + auditor_mode (see table below)
-4. For each scenario task, in dependency order:
+4. Read references/briefs.md (in this skill's directory) once — it holds the
+   dispatch briefs for all three agents plus the cross-model consult brief.
+5. For each scenario task, in dependency order:
    a. (optional) spawn helpers if context is thin — codebase-analyzer for unfamiliar code,
       web-search-researcher for docs, etc. The lead decides; this skill doesn't prescribe.
    b. Dispatch pp-ping with team_name + task ID + brief
-      → ping discovers project test conventions, writes a FAILING test in-place
-        at the project's test path,
+      → ping discovers project test conventions, writes a FAILING test in-place,
         records the test path in the task description, returns
    c. Dispatch pp-pong with team_name + task ID
-      → pong reads the failing test, runs it to confirm RED, implements until GREEN,
+      → pong reads the failing test, confirms RED, implements until GREEN,
         TaskUpdates the task with a ## Pong (impl) section, writes large outputs
-        (test_output.txt, judge_samples.md if LLM seam) to
-        .claude/ping-pong/<work-id>/<task-id>/, returns
-   d. AUDIT (depends on auditor_mode):
+        to the cycle cache, returns
+   d. AUDIT (depends on auditor_mode — see table; detail in references/audit-modes.md):
       - claude-solo  → pp-auditor only
-      - consult      → pp-auditor + gemini-cli-orchestrator + codex-cli-orchestrator (parallel),
-                       lead synthesizes
-      - rotate       → one model round-robin per cycle; pp-auditor as project-specific lint backstop
+      - consult      → pp-auditor + Gemini + Codex (parallel), lead synthesizes
+      - rotate       → one model round-robin per cycle; pp-auditor as backstop
       - panel        → all three audit independently; lead judges majority + dissent
-   e. ROUTE on audit verdict (per-axis):
-      - All five axes PASS → mark task completed, move to next scenario
+   e. ROUTE on the per-axis verdict:
+      - All four blocking axes PASS → mark task completed; if Extra mile is
+        ADVISORY, accept and log it, or re-dispatch pong for the sibling fix
+        (small, obvious scope only)
       - Failed "On task" → re-dispatch pp-ping (the spec missed intent)
-      - Failed "Correct" → re-dispatch pp-pong (test didn't pass on auditor re-run,
-                          or sibling test broke)
+      - Failed "Correct" → re-dispatch pp-pong (test failed on auditor re-run,
+                          or a sibling test broke)
       - Failed "Right" → re-dispatch pp-pong (hygiene / half-finished work)
       - Failed "Smart" → re-dispatch pp-pong with "simpler approach" prompt
                         (escalate if architectural)
-      - Failed "Extra mile" → accept as advisory finding, or re-dispatch with
-                             specific sibling fix prompt (small scope only)
-5. (optional) Use the Monitor tool on a poll script to surface staleness / hangs / capacity issues
-   as notifications — see "Monitoring" below.
-6. Respawn dead/stale teammates as needed: Agent({subagent_type: "pp-ping", name: "ping-retry"})
-   gives a fresh inbox + fresh context.
-7. When the goal in GOAL.md is met (all scenarios PASS + work-level acceptance
+6. (optional) Monitor for staleness / hangs / capacity — references/monitoring.md.
+7. Respawn dead/stale teammates as needed: Agent({subagent_type: "pp-ping",
+   name: "ping-retry"}) gives a fresh inbox + fresh context.
+8. When the goal in GOAL.md is met (all scenarios PASS + work-level acceptance
    from GOAL.md ✓), TeamDelete.
 ```
 
-The skill describes the SHAPE. Inside it, the lead exercises judgment: when to add helpers, when to re-spec vs. re-implement, when to bubble to the user. **Bias toward self-recovery** — re-dispatch, re-spec, re-chunk, or skip-and-return-to before escalating to the user. Bubble up only when the loop genuinely can't make progress (see "Red flags" at the bottom).
+The skill describes the SHAPE. Inside it, the lead exercises judgment: when to add helpers, when to re-spec vs. re-implement, when to bubble to the user. **Bias toward self-recovery** — re-dispatch, re-spec, re-chunk, or skip-and-return-to before escalating to the user. Bubble up only when the loop genuinely can't make progress (see "Red flags").
 
 ## Goal definition — SMART at the work-id level
 
@@ -164,7 +177,7 @@ goal. Filled in once decomposition is done; updated if re-chunked.>
 
 ## Relevant
 <Why this matters / who needs it. Gives the auditor context for "on task"
-and "extra mile" — e.g. "blocks payment compliance audit due 2026-06-01.">
+and "extra mile" — e.g. "blocks the compliance audit due end of quarter.">
 
 ## Time-bound
 <Max N cycles, wall-clock deadline, or iteration cap. After this the lead
@@ -208,7 +221,7 @@ The lever has limits: don't pile on rules without trimming. If the auditor brief
 | `claude-solo` | pp-auditor only | ~30s | Deterministic scenarios |
 | `consult` | pp-auditor + Gemini + Codex (parallel), lead synthesizes | ~1.5 min | LLM-compliance seams |
 | `rotate` | One of {Claude, Gemini, Codex} round-robin per cycle | ~30–60s | Long tasks, model variety |
-| `panel` | All three audit independently; lead judges majority + dissent | ~3 min | High-blast-radius seams (see auto-promotion below) |
+| `panel` | All three audit independently; lead judges majority + dissent | ~3 min | High-blast-radius seams (see auto-promotion) |
 
 **Auto-promotion rules (lead applies during decomposition).** Adapt the project-specific row to whatever bubble-up categories the host project's CLAUDE.md / AGENTS.md declares; the rest is general:
 
@@ -224,43 +237,13 @@ The lever has limits: don't pile on rules without trimming. If the auditor brief
 
 These mirror the typical bubble-up categories in a project's house rules — cross-model audit fires exactly where you'd want a second opinion anyway.
 
-**Skipping the audit on trivial seams.** `claude-solo` mode may be skipped entirely when ALL of:
+Run-time detail — when `claude-solo` may be skipped on trivial seams, the write-before-read independence protocol, cross-model delivery options (orchestrator agents vs direct CLI), synthesis and blindspot weighting, rotation state — lives in **references/audit-modes.md**. Read it before running any non-default audit mode. `consult` / `rotate` / `panel` never skip the audit.
 
-- Diff is small (< ~50 lines).
-- Seam is pure scaffolding, config, boilerplate, version pinning, or generated code (no branching logic).
-- Test is contract-shaped — asserts on existence / version / path / signature, not behavior under load or edge cases.
-- You're in **solo-lead mode** (single-session, not dispatching separate agents).
+## Monitoring
 
-The signal: a scenario where the audit's five-axis check has nothing to bite on because the diff has no judgment in it. Example: `uv init` + a one-line `__version__` assertion. The audit would PASS five axes mechanically; running it is overhead.
+For long runs, point Claude Code's native `Monitor` tool at a poll script that emits `ALERT:` lines on hangs, stale tasks, or rate-limit hits — each line surfaces to the lead mid-conversation. Setup, an example script, and the manual-poll fallback for environments without Monitor: **references/monitoring.md**.
 
-In **dispatched mode**, fire the audit even on trivial seams — pp-auditor's memory accumulates "what trivial really looks like" patterns over time. `consult` / `rotate` / `panel` modes **never** skip; those exist precisely because the seam is risky enough to warrant multiple eyes.
-
-**Cross-model orchestration (consult / panel):** the LEAD dispatches `gemini-cli-orchestrator` and `codex-cli-orchestrator` in parallel with the same audit brief. None of the three auditors sees the others' verdicts until the lead synthesizes. Independence is the point.
-
-**Synthesis rule — convergence is the strongest signal.** When two or three independent reviewers from different model families flag the same thing, weight it heavily — that's a finding that survived three different sets of model-family blindspots. When they disagree, weigh each model's known blindspots: Gemini lacks Claude Code platform knowledge (will call real primitives "pseudo-APIs"); Codex is sharp on schema and enforcement claims but may over-index on adversarial framing; Claude has same-family bias with the agents being audited. Convergence beats severity — a finding all three flag is more actionable than a finding only one calls "critical."
-
-**Rotation state:** memory bullet on `pp-auditor` (`* 🟡 (rotation) Last cross-model auditor: gemini`) — lead reads it at the start of each cycle.
-
-## Monitoring (the Monitor tool, not an agent)
-
-`pp-monitor` does not exist as an agent. Use Claude Code's native `Monitor` tool when the lead wants supervision without baby-sitting:
-
-```sh
-# Example poll script — emit ALERT lines for hang / staleness / rate-limit
-while true; do
-  # check task list for stale in_progress items
-  # check team config for member tmuxPaneId == "" (dead inbox)
-  # tail the project's dev log for rate-limit hits
-  # ... emit "ALERT: <category> <detail>" lines
-  sleep 60
-done
-```
-
-Each `ALERT:` stdout line becomes a chat notification. Lead reacts (respawn, nudge via SendMessage, bubble to user).
-
-Teams die. Tmux panes go stale. Members stop responding. Monitor catches it; the lead respawns. Predefined agents make this trivial — `Agent({subagent_type: "pp-ping", name: "ping-attempt-2"})` gives a fresh instance any time.
-
-## The four discipline rules (lead-enforced via verify + re-dispatch)
+## Discipline rules (lead-enforced via verify + re-dispatch)
 
 These live in agent bodies as self-discipline; the lead enforces them by verifying on every return and re-dispatching when violated. Be honest about this — it's not a system gate, it's a discipline + verification loop.
 
@@ -279,189 +262,25 @@ This is the lead's call. The skill is intentionally not prescriptive. Common cas
 
 - **Spec has thin context** → spawn `codebase-analyzer` or `Explore` before dispatching pp-ping
 - **Unfamiliar library / SDK version** → spawn `web-search-researcher` before specifying
-- **Cross-model audit needed** → spawn `gemini-cli-orchestrator` + `codex-cli-orchestrator` per `auditor_mode`
-- **Adversarial second opinion on a tricky impl** → `codex-cli-orchestrator`
-- **Long-running smoke test** → set up `Monitor` on the test process
+- **Cross-model audit needed** → per `auditor_mode` (references/audit-modes.md)
+- **Adversarial second opinion on a tricky impl** → `codex-cli-orchestrator` or the `codex` CLI
+- **Long-running smoke test** → `Monitor` on the test process
 
-Helpers report to the lead, not to ping/pong/auditor. Workers stay focused on their role; if they need help, they SendMessage the lead.
+Helpers report to the lead, not to ping/pong/auditor. Workers stay focused on their role; if they need help, they ask the lead.
 
 ## Brief templates
 
-Compact scaffolds. Lead adapts per task.
-
-### pp-ping brief
-
-```
-Task ID: <task-id>
-Work ID: <team-name slug, e.g. "auth-rollout">
-Goal file: .claude/ping-pong/<work-id>/GOAL.md  ← READ THIS FIRST
-Scenario: <Given/When/Then from task content>
-auditor_mode: <from auto-promotion rules>
-Predecessor task IDs: <list — TaskGet each to read prior evidence>
-
-Read GOAL.md first — the scenario you spec must serve the work-level goal,
-and your test should make the Measurable section more true once it passes.
-
-Discover the project's test conventions for this seam — locate the test directory
-and runner from the project's config / build manifest, then grep neighboring tests
-for the seam's symbols and copy their shape.
-Write a FAILING test in-place using those conventions:
-- BDD scenario in the project's test-container syntax (Given/When/Then)
-- Acceptance criteria as assertions
-- LLM seams: language-appropriate parametrization at N≥5
-- Capacity pre-flight as a setup hook / skip marker if applicable
-
-Update the task description via TaskUpdate with a "## Ping (spec)" section:
-- test path (format: <path>/<to>/<test_file>:<line>)
-- seam type + auditor mode
-- capacity gates (one line or "none required")
-- out-of-scope list (files/surfaces pong must not touch)
-- narrative context (predecessor evidence summary, capacity-gate rationale,
-  scope-creep traps) — inline; only escalate to a cache file if it would bloat
-  the task beyond readability
-```
-
-### pp-pong brief
-
-```
-Task ID: <task-id>
-Work ID: <team-name slug>
-Goal file: .claude/ping-pong/<work-id>/GOAL.md  ← READ for scope context
-Test path: <from task description, format <path>/<to>/<test_file>:<line>>
-Predecessor task IDs: <list — TaskGet each for prior evidence>
-
-Read the failing test pp-ping wrote (TaskGet the task, follow test path).
-Run it FIRST to confirm RED — if it's already green, escalate (the spec is wrong).
-Run capacity pre-flight before any code change. Implement until the test passes
-(GREEN). Capture full test output.
-
-Write LARGE outputs to the cache:
-- .claude/ping-pong/<work-id>/<task-id>/test_output.txt   (raw test stdout/stderr)
-- .claude/ping-pong/<work-id>/<task-id>/judge_samples.md  (LLM seams only, N≥5 raw outputs)
-
-Update the task description via TaskUpdate with a "## Pong (impl)" section:
-- status: PASS | DONE_WITH_CONCERNS | FAIL | BLOCKED-<reason>
-- files changed: path:line-range — what
-- test command + exit code + path to test_output.txt
-- acceptance evidence: each assertion → impl line
-- LLM compliance: N_pass/N_total + path to judge_samples.md (if applicable)
-- diff sha
-- hypothesis log (if any failed attempts)
-- out-of-scope respected: yes/no
-- concerns (DONE_WITH_CONCERNS only): bulleted list of substantive doubts
-  the auditor must address — workarounds, edge cases you couldn't verify,
-  scope drift you noticed. Don't use this as a hedge; only when the test
-  passes but a thoughtful auditor would want a closer look.
-
-Use DONE_WITH_CONCERNS when: the test passes but you have substantive doubts
-(an unverified edge case, a workaround that may not generalize, a scope
-question worth raising). Don't use it as a CYA hedge — every concern must
-be specific and actionable. The auditor will address each one in their verdict.
-
-Max 2 hypothesis attempts per scenario before escalating with STATUS: BLOCKED.
-```
-
-### pp-auditor brief
-
-```
-Task ID: <task-id>
-Work ID: <team-name slug>
-Goal file: .claude/ping-pong/<work-id>/GOAL.md  ← READ for "on task" + "extra mile"
-Test path: <from task description>
-Diff: <git rev-range>
-auditor_mode: <claude-solo | consult | rotate | panel>
-
-Read GOAL.md (anchors "on task" + "extra mile" axes), then TaskGet the task —
-both ping's spec section AND pong's evidence section. If pong's status is
-DONE_WITH_CONCERNS, each listed concern must be addressed in your verdict.
-
-Re-run the test yourself. Validate referenced cache files exist
-(.claude/ping-pong/<work-id>/<task-id>/test_output.txt, etc.). grep for orphan
-refs / stale comments after any rename.
-
-Update the task description via TaskUpdate with an "## Auditor (verdict)" section
-that emits a PER-AXIS verdict (not a single overall PASS/FAIL):
-
-- On task:    PASS | FAIL — <reason; cite GOAL.md if relevant>
-- Correct:    PASS | FAIL — <test exit code, sibling tests, claim match>
-- Right:      PASS | FAIL — <hygiene findings or "clean">
-- Smart:      PASS | FAIL — <concerns or "approach is appropriate">
-- Extra mile: PASS | FAIL — <missed sibling work or "none obvious">
-- Concerns addressed (DONE_WITH_CONCERNS only): for each pong concern, resolved/open + reasoning
-- LLM compliance verified (if applicable)
-- Audit sha: <git rev-parse HEAD>
-- Overall: PASS  (only if all five axes PASS)
-         | FAIL (if any axis fails — lead routes to ping or pong by the failed axis)
-
-For consult/panel modes, ALSO write your independent verdict to:
-.claude/ping-pong/<work-id>/<task-id>/claude_audit.md
-(separate file preserves "write before reading others" independence)
-```
-
-### Cross-model consult brief (lead → gemini-cli-orchestrator / codex-cli-orchestrator)
-
-```
-Cross-model audit consultation for task <task-id> (work-id: <work-id>).
-
-You are an independent second pair of eyes. DO NOT read pp-auditor's verdict
-until you've formed your own opinion.
-
-1. Read the task (intent + ping's spec + pong's evidence sections) and the test
-   pp-ping wrote (path in task description). Read the diff: git diff <rev-range>.
-2. Re-run the test yourself.
-3. Validate referenced cache files exist at
-   .claude/ping-pong/<work-id>/<task-id>/ (test_output.txt, judge_samples.md if LLM seam).
-4. Form an independent verdict — write it to
-   .claude/ping-pong/<work-id>/<task-id>/<your-model>_audit.md FIRST.
-5. THEN read .claude/ping-pong/<work-id>/<task-id>/claude_audit.md.
-   Note anything you found that Claude missed.
-
-Reply via SendMessage to the lead with: PASS / FAIL + one concrete reason +
-confidence + findings missed by Claude.
-```
+The dispatch briefs (pp-ping, pp-pong, pp-auditor, cross-model consult) live in **references/briefs.md**. Read that file once per work session before the first dispatch, then adapt per task — the briefs are scaffolds, not scripts.
 
 ## Memory layout
 
-Each predefined agent has `memory: project` + `skills: [subagent-memory]` in frontmatter. Claude Code auto-creates a `MEMORY.md` per agent. **Path resolution depends on where the agent is defined:**
+Each predefined agent has `memory: project` + `skills: [subagent-memory]` in frontmatter; Claude Code auto-creates a per-agent `MEMORY.md` whose first 200 lines / 25KB are preloaded into the agent's system prompt every invocation. Path follows where the agent is defined: project-scoped agents (`<project>/.claude/agents/`) → `<project>/.claude/agent-memory/<agent>/MEMORY.md`; global agents (`~/.claude/agents/`) → `~/.claude/agent-memory/<agent>/MEMORY.md`. Project memory is designed to be shareable via version control — commit it if the team should inherit the accumulated craft, or switch the agents to `memory: local` (→ `.claude/agent-memory-local/`) to keep it out of the repo. Either way, craft built in one project doesn't leak to others.
 
-- **Project-scoped** agents (like the pp-* set at `<project>/.claude/agents/`) → memory at `<project>/.claude/agent-memory/<agent>/MEMORY.md` (project-local; gitignored via `**/.claude/agent-memory/`)
-- **Globally-installed** agents (at `~/.claude/agents/`) → memory at `~/.claude/agent-memory/<agent>/MEMORY.md`
-
-Either way the first ~200 lines (or 25KB, whichever hits first) are preloaded into the agent's system prompt at start of every invocation; the agent appends dated bullets at the end of each task; reflection compresses at the threshold. Project-scoped pp-* agents' memory is per-project — craft built up in one project doesn't leak to others.
-
-What each agent should remember:
-- **pp-ping**: where various test types live in the current repo (test-directory paths for different surfaces), spec shapes that produced clean impls, project-specific seams (rate limits, auth rules, harness gotchas), decomposition heuristics
-- **pp-pong**: impl patterns, test-harness gotchas, evidence shapes that satisfied audit (which TaskUpdate fields were load-bearing), component / module reuse paths discovered in the current repo
-- **pp-auditor**: false-positive patterns, audit-checklist refinements, **cross-model findings** ("Gemini caught X N times now → auto-promote class Y to consult")
-
-Context-clearing per scenario: spawn fresh ping/pong/auditor each scenario; memory persists, context does not. Lead persists across the whole task (it's the main thread).
+What each agent remembers is defined in its own file ("What memory should hold"): ping → test-location maps, spec shapes, decomposition heuristics; pong → impl patterns, harness gotchas, reuse paths; auditor → false-positive patterns, checklist refinements, cross-model findings. Spawn fresh per scenario: memory persists, context does not. The lead persists across the whole session (it's the main thread).
 
 ## Install
 
-This skill is designed to be installed via the `skills` CLI:
-
-```bash
-npx skills add fourcolors/skills --skill ping-pong -a claude-code
-```
-
-After installing, the three required custom agent definitions (`pp-ping.md`, `pp-pong.md`, and `pp-auditor.md`) must be bootstrapped into your project's `.claude/agents/` directory:
-
-```bash
-mkdir -p .claude/agents
-cp .claude/skills/ping-pong/agents/*.md .claude/agents/
-```
-
-Alternatively, for global user-scoped installation:
-
-```bash
-npx skills add fourcolors/skills --skill ping-pong -g
-mkdir -p ~/.claude/agents
-cp ~/.claude/skills/ping-pong/agents/*.md ~/.claude/agents/
-```
-
-Session restart is needed after install for new agent types to register.
-
-For cross-model audit modes (`consult`, `rotate`, `panel`), `gemini-cli-orchestrator` and `codex-cli-orchestrator` must also be present in `.claude/agents/` AND the corresponding CLIs (`gemini`, `codex`) installed and authenticated locally. Lead pre-flight: verify both before kicking off a task with non-default audit modes; degrade gracefully to `claude-solo` with a logged warning if missing.
+Human-facing install and agent-bootstrap instructions live in this skill's **README.md**. The lead never installs anything mid-session — pre-flight (step 0) only verifies the pieces exist and stops with the README instructions if they don't. New agent types register on session restart.
 
 ## Cycle cache (where ephemera lives)
 
@@ -482,7 +301,7 @@ Three places hold cycle state, each suited to its data shape:
     └── codex_audit.md            consult/panel only — Codex's independent verdict
 ```
 
-The task description carries the structured verdict + evidence + spec sections (queryable via `TaskGet`); the cache holds only what doesn't fit there. `<work-id>` is the `team_name` slug (e.g. team `pp-auth-rollout` → cache at `.claude/ping-pong/auth-rollout/`), so all scenarios of one work session share a parent directory — one delete cleans the whole session. `GOAL.md` lives at the work-id root (not per-task) because the goal applies to the whole session.
+`<work-id>` is the `team_name` slug (e.g. team `pp-auth-rollout` → cache at `.claude/ping-pong/auth-rollout/`), so all scenarios of one work session share a parent directory — one delete cleans the whole session. `GOAL.md` lives at the work-id root because the goal applies to the whole session.
 
 **Delete-test:** if you can't delete `.claude/ping-pong/<work-id>/<task-id>/` after the cycle closes without losing meaning, something is in the cache that should be in the task description or the codebase. Move it.
 

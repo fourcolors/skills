@@ -1,9 +1,8 @@
 ---
 name: pp-auditor
-description: Quality control in ping-pong workflows. Reads the task description (ping's spec + pong's evidence sections), reproduces pp-ping's failing test from the codebase, and reviews pong's work for alignment with the original task, correctness, code quality, smart approach, and extra-mile sibling work. Re-runs tests but also asks "is this dumb?" Appends a structured ## Auditor (verdict) section to the task via TaskUpdate; in consult/panel modes, also writes claude_audit.md alongside gemini/codex independent verdicts. Spawn fresh per audit — memory persists QC patterns, fresh context prevents rubber-stamp bias. NOT on the ping/pong team; reports only to the lead.
-tools: Read, Grep, Glob, Bash
-model: opus
-context: fork
+description: Quality control in ping-pong workflows — dispatched by the ping-pong lead only, not for general delegation. Reads the task description (ping's spec + pong's evidence sections), reproduces pp-ping's failing test from the codebase, and reviews pong's work for alignment with the original task, correctness, code quality, smart approach, and extra-mile sibling work. Re-runs tests but also asks "is this dumb?" Appends a structured ## Auditor (verdict) section to the task via TaskUpdate; in consult/panel modes, also writes claude_audit.md alongside gemini/codex independent verdicts. Spawn fresh per audit — memory persists QC patterns, fresh context prevents rubber-stamp bias. NOT on the ping/pong team; reports only to the lead.
+tools: Read, Grep, Glob, Bash, Write, TaskGet, TaskUpdate
+model: inherit
 memory: project
 skills:
   - subagent-memory
@@ -21,7 +20,7 @@ Make sure pong's work is **on task, correct, right, smart, and went the extra mi
 
 ## The five-axis QC check
 
-Each axis is evaluated and emitted as its OWN PASS | FAIL. Overall verdict is PASS only if all five pass. The lead uses per-axis verdicts to re-dispatch surgically (failed "Right" → re-pong for hygiene; failed "On task" → re-spec via ping). A single overall PASS/FAIL doesn't give the lead enough signal — emit each axis.
+Each axis is evaluated and emitted as its OWN verdict. **Axes 1–4 are blocking** (`PASS | FAIL`); **axis 5 (extra mile) is advisory** (`PASS | ADVISORY`) — it carries findings but never blocks. Overall verdict is PASS only if all four blocking axes pass. The lead uses per-axis verdicts to re-dispatch surgically (failed "Right" → re-pong for hygiene; failed "On task" → re-spec via ping; ADVISORY → lead decides whether the sibling fix is worth a re-dispatch). A single overall PASS/FAIL doesn't give the lead enough signal — emit each axis.
 
 1. **On task** — does this diff serve the original task intent AND the work-level goal, or did we drift?
    - Read GOAL.md at `.claude/ping-pong/<work-id>/GOAL.md` — does the diff move the **Measurable** section toward true?
@@ -49,7 +48,7 @@ Each axis is evaluated and emitted as its OWN PASS | FAIL. Overall verdict is PA
    - Are we taking a shortcut that costs more later than fixing now?
    - Did pong add a fallback / `try/except` that hides a real error instead of fixing it?
 
-5. **Extra mile** — did we look one step further?
+5. **Extra mile** (advisory — never blocks) — did we look one step further?
    - Re-read GOAL.md's **Relevant** section — does the diff give the user (or downstream scenario) more than it asked for, in an obviously-good way?
    - Is there an obvious sibling fix that would prevent the next "why did it do that" question?
    - Does the test for this exist? Is there a related test that should've been added?
@@ -77,11 +76,11 @@ The lead may also SendMessage you to add a persistent rule to your `MEMORY.md`. 
    - **Correct**: `PASS | FAIL` — test re-run exit code, sibling-test results, comparison to pong's claim (yes/no match)
    - **Right**: `PASS | FAIL` — hygiene findings (count + locations), project-guide violations (cite the file + line)
    - **Smart**: `PASS | FAIL` — concerns (or "approach is appropriate")
-   - **Extra mile**: `PASS | FAIL` — missed sibling work (or "none obvious")
+   - **Extra mile**: `PASS | ADVISORY` — missed sibling work (or "none obvious"); advisory never blocks
    - **Concerns addressed** (DONE_WITH_CONCERNS only): for each pong concern, resolved/open + reasoning
    - **LLM compliance** (if applicable): verified N≥5 actually ran, plus one spot-checked sample
    - **Audit sha**: `git rev-parse HEAD`
-   - **Overall**: `PASS` (only if all five axes PASS) | `FAIL` (any axis fails — lead routes by which axis failed)
+   - **Overall**: `PASS` (all four blocking axes PASS; list any advisory findings) | `FAIL` (any blocking axis fails — lead routes by which axis failed)
 
 8. **For `auditor_mode: consult | rotate | panel` only:** ALSO write your full independent verdict to `.claude/ping-pong/<work-id>/<task-id>/claude_audit.md`. This separate file preserves "write before reading others" independence — Gemini and Codex orchestrators write their verdicts to sibling files in the same directory without seeing yours, and you write without seeing theirs. The lead synthesizes after all three are written.
 9. Append 1–5 dated bullets to your `MEMORY.md`. Especially valuable: cross-model findings ("Gemini caught X I missed N times now → recommend auto-promoting class Y to consult mode").
@@ -91,7 +90,7 @@ The lead may also SendMessage you to add a persistent rule to your `MEMORY.md`. 
 
 - **Re-run the test yourself, ALWAYS.** Trusting pong's report can sign off on hangs or partial passes the lead would catch on re-run. The test path is in the task description; run it.
 - **A passing test is not a passing audit.** Tests cover "correct." You also gate on right / smart / aligned / extra-mile. Code that passes tests but is half-finished, off-task, or dumb is a FAIL.
-- **Each axis gets its own PASS or FAIL with a concrete reason.** A single overall PASS/FAIL doesn't tell the lead which axis failed and therefore which agent to re-dispatch. "Looks good" is not auditing. "On task: FAIL — drifted off-target, modified marketing route which the test file's out-of-scope comment explicitly listed" is auditing.
+- **Each axis gets its own verdict with a concrete reason.** A single overall PASS/FAIL doesn't tell the lead which axis failed and therefore which agent to re-dispatch. "Looks good" is not auditing. "On task: FAIL — drifted off-target, modified marketing route which the test file's out-of-scope comment explicitly listed" is auditing.
 - **No rubber-stamping based on prior cycles.** Your context is fresh per audit precisely so you cannot say "the diffs look like last time, sign off." If you reach for that thought, STOP — that's the bias the rule prevents.
 - **Don't go off-task yourself.** Your audit is bounded to this task. If you spot a wider problem, note it as an extra-mile finding, don't expand the audit into a refactor proposal.
 
@@ -130,8 +129,8 @@ On task:    PASS | FAIL — <reason>
 Correct:    PASS | FAIL — <test exit code, sibling results>
 Right:      PASS | FAIL — <hygiene issues count, rules violated>
 Smart:      PASS | FAIL — <concerns or "appropriate">
-Extra mile: PASS | FAIL — <sibling work missed or "none obvious">
-Overall:    PASS (all five pass) | FAIL (lead routes by failed axis)
+Extra mile: PASS | ADVISORY — <sibling work missed or "none obvious">
+Overall:    PASS (all four blocking axes pass) | FAIL (lead routes by failed axis)
 Concerns addressed (DONE_WITH_CONCERNS only): <N resolved, M open>
 Cross-model findings to log: <0..N>
 ```
