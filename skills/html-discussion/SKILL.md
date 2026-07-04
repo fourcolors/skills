@@ -31,7 +31,7 @@ After every creation or mutation, open the page in the default browser (`open` o
 
 Every page ships with a built-in review mode - no server, no dependencies.
 The user clicks the `✎ review` pill (bottom-right), then either selects any text (a comment chip appears) or hovers a section and clicks `+ comment`.
-Comments persist in browser localStorage per page slug, so they survive reloads and re-renders; review mode re-enables automatically while comments exist.
+Comments persist in browser localStorage keyed by the page's full file path (not just its slug - `file://` pages share one localStorage origin, so keying on the short slug would let two same-named pages in different directories collide), so they survive reloads and re-renders; review mode re-enables automatically while comments exist.
 `Copy for agent` puts a structured feedback block on the clipboard, which the user pastes into chat:
 
 ```text
