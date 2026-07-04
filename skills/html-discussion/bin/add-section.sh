@@ -3,6 +3,11 @@
 # Append a snippet to the page; update the manifest.
 # Snippet HTML lives at <skill>/snippets/<snippet>.html.
 # Slot fills replace {{KEY}} placeholders inside the snippet.
+# NOTE: the k=v,k=v grammar has no escape for a literal comma in a value
+# (comma is the pair separator) - a value containing one will be split at
+# that comma. For fill values with commas, add the section with a
+# placeholder and then edit .fills in the manifest directly with jq,
+# followed by render.sh.
 
 set -euo pipefail
 
@@ -39,11 +44,17 @@ section_id="${nn}-${snippet}"
 rendered=$(mktemp)
 cp "$snippet_path" "$rendered"
 
+# Parsed once here; the manifest update below reuses these same pairs
+# (rather than re-parsing $fills independently) so the HTML actually
+# rendered and the fills recorded in the manifest can never diverge.
+keys=() vals=()
 if [[ -n "$fills" ]]; then
   IFS=',' read -ra pairs <<< "$fills"
   for pair in "${pairs[@]}"; do
     key="${pair%%=*}"
     val="${pair#*=}"
+    keys+=("$key")
+    vals+=("$val")
     # Literal replace: value passed via ENVIRON and spliced with index/substr,
     # so &, backslashes and regex metacharacters survive untouched.
     tmp=$(mktemp)
@@ -80,10 +91,15 @@ mv "$tmp" "$html"
 
 rm -f "$rendered" "$block"
 
-# Update manifest
+# Update manifest. Built from the same keys[]/vals[] parsed above (not a
+# fresh split of $fills) so it exactly matches what was substituted into
+# the HTML above - see the parsing note at the top of this script.
 fills_json="{}"
-if [[ -n "$fills" ]]; then
-  fills_json=$(echo "$fills" | jq -R 'split(",") | map(split("=") | {(.[0]): .[1]}) | add')
+if [[ ${#keys[@]} -gt 0 ]]; then
+  fills_json="{}"
+  for idx in "${!keys[@]}"; do
+    fills_json=$(jq --arg k "${keys[$idx]}" --arg v "${vals[$idx]}" '. + {($k): $v}' <<< "$fills_json")
+  done
 fi
 
 jq --arg id "$section_id" --arg snippet "$snippet" --argjson fills "$fills_json" --arg now "$(date -u +%FT%TZ)" \
