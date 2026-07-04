@@ -45,12 +45,14 @@ To prevent prompt bloat and keep context windows highly efficient:
 | [`ping-pong`](./skills/ping-pong) | **Multi-Agent** | A robust pair programming and quality-control simulation orchestrating specialized navigator (`pp-ping`), driver (`pp-pong`), and QC auditor (`pp-auditor`) subagents. |
 | [`subagent-memory`](./skills/subagent-memory) | **Cognition** | An observational memory discipline for subagents using date-grouped entries, priority emojis, and a CLI reflection pass to avoid context cliff issues. |
 | [`html-discussion`](./skills/html-discussion) | **Visual Planning** | Script-driven, byte-addressable HTML planning artifact generator supporting option comparison tables, neomorphic/glassmorphism themes, and structured snippets. |
+| [`agent-workflows`](./skills/agent-workflows) | **Orchestration** | A composable baseline library (ping-pong build loop, no-mistakes ship gate, cross-cutting primitives) that agents load to compose dynamic multi-agent workflows on the fly. |
 
 ---
 
 ## Development & Execution Lifecycle
 
-This diagram illustrates how all the packaged skills (`html-discussion`, `ping-pong`, `subagent-memory`, and `scratch`) and custom slash commands (`/discussion`, `/crystallize`) coordinate dynamically throughout your system development process:
+This diagram illustrates how the workflow skills (`html-discussion`, `ping-pong`, `subagent-memory`, and `scratch`) and custom slash commands (`/discussion`, `/crystallize`) coordinate dynamically throughout your system development process.
+The fifth skill, `agent-workflows`, is not a node in this diagram: it packages the ping-pong loop and the no-mistakes ship gate as composable baselines that dynamically generated workflows start from:
 
 ```mermaid
 graph TD
@@ -120,13 +122,20 @@ skills/
     │   ├── README.md      <-- Human instructions
     │   └── templates/
     │       └── MEMORY.md
-    └── html-discussion/
-        ├── SKILL.md       <-- HTML artifact rules
+    ├── html-discussion/
+    │   ├── SKILL.md       <-- HTML artifact rules
+    │   ├── README.md      <-- Human instructions
+    │   ├── bin/           <-- Mutation shell scripts
+    │   ├── snippets/      <-- HTML slot component blueprints
+    │   ├── themes/        <-- Glassmorphism & neomorphism CSS themes
+    │   └── commands/      <-- Custom slash command definitions (crystallize, discussion)
+    └── agent-workflows/
+        ├── SKILL.md       <-- Composition rules & baseline index
         ├── README.md      <-- Human instructions
-        ├── bin/           <-- Mutation shell scripts
-        ├── snippets/      <-- HTML slot component blueprints
-        ├── themes/        <-- Glassmorphism & neomorphism CSS themes
-        └── commands/      <-- Custom slash command definitions (crystallize, discussion)
+        └── baselines/     <-- One file per composable workflow shape
+            ├── ping-pong.md
+            ├── no-mistakes.md
+            └── primitives.md
 ```
 
 ---
@@ -150,6 +159,9 @@ npx skills add fourcolors/skills --skill subagent-memory -a claude-code
 
 # Install HTML Discussion
 npx skills add fourcolors/skills --skill html-discussion -a claude-code
+
+# Install Agent Workflows
+npx skills add fourcolors/skills --skill agent-workflows -a claude-code
 ```
 
 ### Global (User-Scoped)
