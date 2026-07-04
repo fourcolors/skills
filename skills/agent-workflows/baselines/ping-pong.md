@@ -63,7 +63,10 @@ for (let round = 0; round < 3; round++) {
   verdict = impl && await agent(auditPrompt(scenario, spec, impl), { phase: 'Audit', schema: VERDICT, effort: 'high' })
   if (!verdict) { verdict = { axes: [{ name: 'Correct', blocking: true, pass: false, reason: 'missing impl or verdict' }] }; continue }
   const failed = verdict.axes.filter(a => a.blocking && !a.pass)
-  if (!failed.length) return { scenario, impl, verdict }                     // audited green: done
+  if (!failed.length) {
+    await agent(commitPrompt(scenario, impl), { phase: 'Build' })            // exit invariant: commit audited work on a non-default feature branch
+    return { scenario, impl, verdict }                                      // audited green and committed: done
+  }
   const specGap = failed.some(a => a.name === 'On task')
   if (specGap && round < 2) spec = (await agent(respecPrompt(scenario, verdict), { phase: 'Spec', schema: SPEC })) ?? spec
 }

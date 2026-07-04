@@ -53,18 +53,22 @@ Abort and rerun are strictly between-runs actions; never use them mid-run to byp
 
 ```js
 // Composed gate for environments without the no-mistakes CLI.
+// Illustrates the review/test/document/lint stages, the ones with gate-loop findings;
+// intent/rebase/push/PR/CI are setup and terminal steps, not gate-loop stages.
 // GATE returns {findings: [{id, action, detail}]} where action is 'auto-fix' | 'no-op' | 'ask-user'.
-const stages = ['review', 'test', 'docs', 'lint']
-for (let attempt = 0, i = 0; i < stages.length; ) {
-  const gate = await agent(gatePrompt(stages[i], intent, branch), { phase: 'Gate', schema: GATE })
-  if (!gate) return { blocked: { stage: stages[i], reason: 'gate agent returned no verdict' } }  // a missing verdict blocks, never advances
+const stages = ['review', 'test', 'document', 'lint']
+const attempts = Object.fromEntries(stages.map(s => [s, 0]))                  // per-stage: one slow-to-converge stage must not starve the others' budget
+for (let i = 0; i < stages.length; ) {
+  const stage = stages[i]
+  const gate = await agent(gatePrompt(stage, intent, branch), { phase: 'Gate', schema: GATE })
+  if (!gate) return { blocked: { stage, reason: 'gate agent returned no verdict' } }  // a missing verdict blocks, never advances
   const askUser = gate.findings.filter(f => f.action === 'ask-user')
-  if (askUser.length) return { blocked: { stage: stages[i], findings: askUser } }                // surface verbatim; only the human decides
+  if (askUser.length) return { blocked: { stage, findings: askUser } }               // surface verbatim; only the human decides
   const fixable = gate.findings.filter(f => f.action === 'auto-fix')
-  if (!fixable.length) { i++; continue }                                                         // clean or no-op only: next stage
-  if (++attempt > 3) return { escalate: { stage: stages[i], findings: fixable } }                // bounded: never spin on a non-converging fix
-  await agent(fixPrompt(stages[i], fixable), { phase: 'Fix' })
-  i = 0                                                                                          // a fix re-enters the FULL gate from the first stage
+  if (!fixable.length) { i++; continue }                                            // clean or no-op only: next stage
+  if (++attempts[stage] > 3) return { escalate: { stage, findings: fixable } }      // bounded per stage: never spin on a non-converging fix
+  await agent(fixPrompt(stage, fixable), { phase: 'Fix' })
+  i = 0                                                                             // a fix commits new code: re-enter the FULL gate from the first stage
 }
 ```
 
