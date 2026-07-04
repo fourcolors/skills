@@ -1,6 +1,6 @@
 ---
 name: html-discussion
-description: Use when the user wants an HTML discussion artifact — a page generated and revised over the life of a conversation. Best for planning a feature, comparing options, surfacing decisions with options grids, recapping analysis, dogfooding a design. Pages save to docs/discussions/<YYYY-MM-DD>-<slug>.html with a sibling .json manifest as source of truth. Sections are byte-addressable by ID via shell scripts in bin/, so revisions cost ~10 tokens each instead of re-reading a 30KB file. Not a build system; not for one-shot diagrams that never get revised.
+description: Use when the user wants an HTML discussion artifact — a page generated and revised over the life of a conversation. Best for planning a feature, comparing options, surfacing decisions with options grids, recapping analysis, dogfooding a design. Pages save to docs/discussions/<YYYY-MM-DD>-<slug>.html with a sibling .json manifest as source of truth. Sections are byte-addressable by ID via shell scripts in bin/, so revisions cost ~10 tokens each instead of re-reading a 30KB file. Every page has a built-in review mode - the user selects text or sections, comments, and pastes a section-addressed feedback block back into chat for revision. Not a build system; not for one-shot diagrams that never get revised.
 license: MIT
 ---
 
@@ -26,6 +26,34 @@ A script-driven HTML discussion skill. Pages live as `docs/discussions/<YYYY-MM-
 4. **Modify** — call `move.sh` to reorder; for mutations the scripts don't cover yet (swap, replace, delete), edit the `.json` manifest with `jq` and run `render.sh` — never hand-edit or re-read the HTML
 
 After every creation or mutation, open the page in the default browser (`open` on macOS, `xdg-open` on Linux) and tell the user the file path.
+
+## Review loop (select + comment)
+
+Every page ships with a built-in review mode - no server, no dependencies.
+The user clicks the `✎ review` pill (bottom-right), then either selects any text (a comment chip appears) or hovers a section and clicks `+ comment`.
+Comments persist in browser localStorage per page slug, so they survive reloads and re-renders; review mode re-enables automatically while comments exist.
+`Copy for agent` puts a structured feedback block on the clipboard, which the user pastes into chat:
+
+```text
+## Page feedback - 2026-05-24-my-spike
+2 comments · exported 2026-05-24T18:00:00.000Z
+
+1. [02-numbered-section] re: "the quoted excerpt"
+   Tighten this lede - lead with the decision.
+
+2. [03-callout] (whole section)
+   Drop this callout entirely.
+   It duplicates section 01.
+```
+
+**How to apply pasted feedback.** Each item is addressed to a manifest section id (the same ids `list.sh` prints), so treat the block as a work order:
+
+1. `list.sh <slug>` to confirm the section ids.
+2. For each item, mutate that section only: edit its `fills` in the `.json` manifest with `jq` and run `render.sh <slug>`, or use `add-section.sh` / `move.sh` when the fix is structural.
+3. Re-open the page and tell the user to reload and hit **Clear all** in the review panel once their feedback is addressed.
+
+Notes on the grammar: a `re: "..."` quote is the user's selected text (truncated to 240 chars); `(whole section)` targets the section as a unit; `[page]` means the comment landed outside any anchored section or the selection spanned two sections - locate the quote by text in that case (the title header is itself a section, so header feedback arrives as `[NN-header]`).
+Pages created before review mode existed pick it up on the next `render.sh <slug>` - but render rebuilds every section from the manifest plus pristine snippets, so if a page carries Edit-replaced content the manifest does not track (compare-table rows, timeline entries, adapted is-isnt-cards / wireframe-arch), restore those sections from git after re-rendering, or skip the upgrade for that page.
 
 ## Command surface
 
@@ -53,10 +81,11 @@ More scripts (swap, copy, paste, delete, replace, clip, save-snippet) will be ad
 - **`tactile.css`** — dark neomorphism. Surfaces share bg color; depth comes from a consistent two-shadow pair (no borders). Orange accent, mono labels. Use when the artifact should feel like a physical control surface.
 
 Themes define CSS custom properties only; the shell snippet defines the layout/component CSS using those variables. Swapping themes recolors without reflow.
+A theme may pull web fonts with `@import`; the render scripts hoist those lines to the `{{THEME_IMPORTS}}` marker at the top of the page's `<style>` block (CSS discards `@import` placed after other rules), while the rest of the theme still loads last so it can override component CSS.
 
 ## Snippets (in `./snippets/`)
 
-- **`_shell.html`** — the page shell + sticky-sidebar TOC + main column + all component CSS. Always present.
+- **`_shell.html`** — the page shell + sticky-sidebar TOC + main column + all component CSS + the review-mode UI. Always present.
 - **`header.html`** — page header. Fills: `EYEBROW`, `H1`, `SUBTITLE`.
 - **`numbered-section.html`** — numbered section heading + lede. Fills: `NUM`, `TITLE`, `LEDE`.
 - **`callout.html`** — left-border tinted aside. Fills: `TITLE`, `BODY`.

@@ -38,12 +38,16 @@ theme_path="$SKILL_DIR/themes/${theme}.css"
 out_html="$OUT_DIR/$slug.html"
 out_json="$OUT_DIR/$slug.json"
 
-# Substitute {{THEME_CSS}} and {{TITLE}} in shell. Read theme into a file
-# so awk doesn't choke on multi-line values via -v.
+# Substitute {{THEME_IMPORTS}}, {{THEME_CSS}} and {{TITLE}} in shell. Read theme
+# into a file so awk doesn't choke on multi-line values via -v.
+# @import lines are hoisted to {{THEME_IMPORTS}} (top of <style>) because CSS
+# discards @import rules that appear after other rules; the rest of the theme
+# stays at {{THEME_CSS}} (end of <style>) so it can override component CSS.
 tmp=$(mktemp)
 {
   awk -v slug="$slug" '
-    /\{\{THEME_CSS\}\}/ { while ((getline line < theme) > 0) print line; close(theme); next }
+    /\{\{THEME_IMPORTS\}\}/ { while ((getline line < theme) > 0) if (line ~ /^[ \t]*@import/) print line; close(theme); next }
+    /\{\{THEME_CSS\}\}/ { while ((getline line < theme) > 0) if (line !~ /^[ \t]*@import/) print line; close(theme); next }
     { gsub(/\{\{TITLE\}\}/, slug); print }
   ' theme="$theme_path" "$shell_path"
 } > "$tmp"

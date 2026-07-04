@@ -11,6 +11,9 @@ It allows AI agents to create, organize, and dynamically evolve structured HTML 
 1. **Byte-Addressable Sections**: Sections are managed via fast CLI shell scripts under `bin/` so agents only replace the relevant byte-offset blocks instead of rewriting a large 30KB HTML file.
 2. **Beautiful Responsive Themes**: Built-in, fully customizable themes (like modern dark neomorphism `tactile.css` or high-quality glassmorphism `liquid-glass.css`).
 3. **Structured Blueprints & Snippets**: Ready-to-use snippets for Options grids, Deliverable checklists, Test plans, Compare tables, and Timeline steps.
+4. **Select-and-Comment Review Loop**: Every rendered page includes a zero-dependency review mode.
+   The user selects text (or picks a whole section), comments, and hits "Copy for agent" to get a section-addressed feedback block to paste back into the conversation.
+   Because each comment carries the section's manifest id, the agent applies revisions through the same `bin/` scripts without re-reading the page.
 
 ---
 

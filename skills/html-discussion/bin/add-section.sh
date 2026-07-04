@@ -44,9 +44,17 @@ if [[ -n "$fills" ]]; then
   for pair in "${pairs[@]}"; do
     key="${pair%%=*}"
     val="${pair#*=}"
-    # Use a temp file to avoid in-place gymnastics
+    # Literal replace: value passed via ENVIRON and spliced with index/substr,
+    # so &, backslashes and regex metacharacters survive untouched.
     tmp=$(mktemp)
-    awk -v k="{{$key}}" -v v="$val" '{gsub(k,v); print}' "$rendered" > "$tmp"
+    RV_KEY="{{$key}}" RV_VAL="$val" awk '
+      BEGIN { k = ENVIRON["RV_KEY"]; v = ENVIRON["RV_VAL"] }
+      {
+        out = ""; s = $0
+        while (i = index(s, k)) { out = out substr(s, 1, i - 1) v; s = substr(s, i + length(k)) }
+        print out s
+      }
+    ' "$rendered" > "$tmp"
     mv "$tmp" "$rendered"
   done
 fi

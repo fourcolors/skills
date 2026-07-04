@@ -16,6 +16,10 @@
 
   --accent:             #D97757;  /* clay */
   --accent-dim:         rgba(217, 119, 87, 0.10);
+  /* text color on accent-filled controls: ivory-on-clay is only 2.96:1, so
+     use slate for AA contrast (5.9:1). Themes without --on-accent fall back
+     to var(--bg). */
+  --on-accent:          var(--text);
 
   --good:               #788C5D;  /* olive */
   --good-dim:           rgba(120, 140, 93, 0.10);

@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{TITLE}}</title>
 <style>
+/* === THEME FONT IMPORTS - @import is only valid before all other rules, so the
+   render scripts hoist a theme's @import lines here and keep the rest at the end. === */
+{{THEME_IMPORTS}}
 /* === LAYOUT === */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -390,6 +393,118 @@ footer {
 }
 footer strong { color: var(--text); }
 
+/* === REVIEW MODE (select + comment, feedback round-trip) === */
+.rv-pill {
+  position: fixed; right: 20px; bottom: 20px; z-index: 60;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em;
+  padding: 9px 14px; border-radius: 999px; cursor: pointer;
+  background: var(--surface-elevated); color: var(--text-dim);
+  border: 1px solid var(--border-bright);
+  box-shadow: 0 4px 16px -8px rgba(0,0,0,0.25);
+  user-select: none;
+}
+.rv-pill:hover { color: var(--text); }
+body.rv-on .rv-pill { color: var(--accent); border-color: var(--accent); }
+.rv-badge {
+  background: var(--accent); color: var(--on-accent, var(--bg));
+  border-radius: 999px; font-size: 11px; padding: 1px 7px; font-weight: 700;
+}
+.rv-badge:empty { display: none; }
+
+body.rv-on main [data-rv-section]:hover { outline: 1px dashed var(--accent); outline-offset: 6px; border-radius: 4px; }
+body.rv-on main [data-rv-section]:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 4px; }
+
+.rv-add {
+  position: absolute; z-index: 65; display: none;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+  padding: 4px 9px; border-radius: 6px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent, var(--bg)); border: none;
+}
+.rv-add.open { display: block; }
+
+.rv-pop {
+  position: absolute; z-index: 70; display: none;
+  background: var(--surface-elevated); border: 1px solid var(--border-bright);
+  border-radius: 8px; box-shadow: 0 8px 24px -8px rgba(0,0,0,0.3);
+  padding: 8px;
+}
+.rv-pop.open { display: block; }
+button.rv-pop {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+  cursor: pointer; color: var(--text);
+}
+.rv-pop .rv-pop-quote {
+  max-width: 280px; font-size: 12px; font-style: italic; color: var(--text-dim);
+  border-left: 2px solid var(--border-bright); padding-left: 8px; margin-bottom: 8px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rv-pop textarea {
+  display: block; width: 280px; min-height: 64px; resize: vertical;
+  font-family: var(--font-body); font-size: 13.5px; line-height: 1.45;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-bright); border-radius: 6px; padding: 8px;
+}
+.rv-pop .rv-row { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+
+.rv-btn {
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em;
+  padding: 5px 10px; border-radius: 6px; cursor: pointer;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-bright);
+}
+.rv-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rv-btn--primary { background: var(--accent); color: var(--on-accent, var(--bg)); border-color: transparent; }
+.rv-btn--primary:hover { color: var(--on-accent, var(--bg)); opacity: 0.9; }
+
+.rv-panel {
+  position: fixed; right: 20px; bottom: 68px; z-index: 60; display: none;
+  width: 340px; max-height: 60vh; overflow: auto;
+  background: var(--surface-elevated); border: 1px solid var(--border-bright);
+  border-radius: 12px; box-shadow: 0 12px 32px -12px rgba(0,0,0,0.35);
+  padding: 14px 16px;
+}
+body.rv-on .rv-panel { display: block; }
+.rv-panel-head {
+  font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer; user-select: none;
+}
+.rv-panel.rv-min { max-height: none; overflow: hidden; }
+.rv-panel.rv-min > :not(.rv-panel-head) { display: none !important; }
+.rv-panel.rv-min .rv-panel-head { margin-bottom: 0; }
+.rv-empty { font-size: 13px; color: var(--text-dim); padding: 6px 0; }
+.rv-item { border-top: 1px solid var(--border); padding: 10px 2px; position: relative; }
+.rv-item:first-child { border-top: none; }
+.rv-sec {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
+  color: var(--accent); cursor: pointer; background: none; border: none; padding: 0;
+}
+.rv-sec:hover { text-decoration: underline; }
+.rv-quote {
+  font-size: 12.5px; color: var(--text-dim); font-style: italic;
+  border-left: 2px solid var(--border-bright); padding-left: 8px; margin: 6px 0;
+}
+.rv-body { font-size: 13.5px; color: var(--text); white-space: pre-wrap; }
+.rv-del {
+  position: absolute; top: 8px; right: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: 14px; line-height: 1;
+}
+.rv-del:hover { color: var(--warn); }
+.rv-actions { display: flex; gap: 8px; margin-top: 12px; }
+.rv-copyarea {
+  display: none; width: 100%; min-height: 90px; margin-top: 8px;
+  font-family: var(--font-mono); font-size: 11.5px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-bright); border-radius: 6px; padding: 8px;
+}
+.rv-copyarea.open { display: block; }
+
+@media (max-width: 920px) { .rv-panel { width: calc(100vw - 40px); } }
+@media print { .rv-pill, .rv-panel, .rv-pop, .rv-add { display: none !important; } }
+
 /* === THEME — variables + optional component overrides. Loaded LAST so themes can override. === */
 {{THEME_CSS}}
 </style>
@@ -405,20 +520,39 @@ footer strong { color: var(--text); }
   </main>
 </div>
 <script>
-  // Build TOC from <h2> elements inside <main>
+(function () {
+  'use strict';
+  const main = document.querySelector('main');
+  if (!main) return;
+
+  // --- Map @section anchor comments onto their DOM elements ---
+  // Every top-level element between <!-- @section:id=X --> and its @endsection
+  // gets data-rv-section="X". These are the SAME ids the bin/ scripts and the
+  // manifest use, so feedback is pre-addressed for agent-side revision.
+  const SEC_RE = /@section:id=([\w-]+)/;
+  let currentId = null;
+  Array.prototype.forEach.call(main.childNodes, node => {
+    if (node.nodeType === 8) {
+      const m = node.nodeValue.match(SEC_RE);
+      if (m) { currentId = m[1]; return; }
+      if (node.nodeValue.indexOf('@endsection:') !== -1) { currentId = null; return; }
+    } else if (node.nodeType === 1 && currentId) {
+      node.setAttribute('data-rv-section', currentId);
+    }
+  });
+
+  // --- Build TOC from <h2> elements inside <main> ---
   const toc = document.querySelector('.toc');
   document.querySelectorAll('main h2').forEach(h => {
     const sec = h.closest('section');
-    const idMatch = sec && sec.previousSibling && sec.previousSibling.nodeType === 8
-      ? (sec.previousSibling.nodeValue.match(/@section:id=([\w-]+)/) || [])[1]
-      : null;
-    const id = idMatch || h.id || h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const anchorId = sec && sec.getAttribute('data-rv-section');
+    const id = anchorId || h.id || h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (sec) sec.id = id;
     const a = document.createElement('a');
     a.href = '#' + id;
     a.textContent = h.textContent.replace(/^\d+\s*/, '').trim();
     a.className = 'toc-link';
-    toc && toc.appendChild(a);
+    if (toc) toc.appendChild(a);
   });
   document.querySelectorAll('.toc-link').forEach(a => {
     a.addEventListener('click', () => {
@@ -426,6 +560,321 @@ footer strong { color: var(--text); }
       a.classList.add('on');
     });
   });
+
+  // --- Review mode: select text or pick a section, comment, copy for agent ---
+  // Key storage on the full path: file:// pages share one localStorage origin,
+  // so a basename key would bleed comments between same-named pages in
+  // different repos. The short slug is display-only.
+  const pagePath = decodeURIComponent(location.pathname || '/page').replace(/\.html?$/, '');
+  const slug = pagePath.split('/').pop() || 'page';
+  const STORE_KEY = 'rv-feedback:' + pagePath;
+  const MODE_KEY = 'rv-on:' + pagePath;
+  const QUOTE_MAX = 240;
+
+  function loadComments() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch (e) { return []; }
+  }
+  function saveComments() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(comments)); }
+    catch (e) { /* private mode etc.; comments live for the session only */ }
+  }
+  let comments = loadComments();
+
+  function el(tag, className, text) {
+    const n = document.createElement(tag);
+    if (className) n.className = className;
+    if (text) n.textContent = text;
+    return n;
+  }
+
+  // Floating UI: pill, panel, selection chip, comment form, section add button
+  const badge = el('span', 'rv-badge');
+  const pill = el('button', 'rv-pill');
+  pill.type = 'button';
+  pill.append('✎ review', badge);
+  pill.title = 'Toggle review mode: select text or hover a section to comment';
+
+  const panel = el('aside', 'rv-panel');
+  const panelHead = el('div', 'rv-panel-head', 'feedback · ' + slug);
+  panelHead.title = 'Click to collapse / expand';
+  panelHead.addEventListener('click', () => panel.classList.toggle('rv-min'));
+  const list = el('div', 'rv-list');
+  const empty = el('div', 'rv-empty',
+    'Select any text, or hover a section and hit "+ comment". Then "Copy for agent" and paste into chat.');
+  const btnCopy = el('button', 'rv-btn rv-btn--primary', 'Copy for agent');
+  btnCopy.type = 'button';
+  const btnClear = el('button', 'rv-btn', 'Clear all');
+  btnClear.type = 'button';
+  const actions = el('div', 'rv-actions');
+  actions.append(btnCopy, btnClear);
+  const copyArea = el('textarea', 'rv-copyarea');
+  copyArea.id = 'rv-copy-output';
+  copyArea.readOnly = true;
+  panel.append(panelHead, list, empty, actions, copyArea);
+
+  const chip = el('button', 'rv-pop', '💬 comment');
+  chip.type = 'button';
+
+  const form = el('div', 'rv-pop');
+  const formQuote = el('div', 'rv-pop-quote');
+  const formText = document.createElement('textarea');
+  formText.id = 'rv-comment-input';
+  formText.placeholder = 'What should change here?';
+  const btnSave = el('button', 'rv-btn rv-btn--primary', 'Save');
+  btnSave.type = 'button';
+  const btnCancel = el('button', 'rv-btn', 'Cancel');
+  btnCancel.type = 'button';
+  const formRow = el('div', 'rv-row');
+  formRow.append(btnCancel, btnSave);
+  form.append(formQuote, formText, formRow);
+
+  const addBtn = el('button', 'rv-add', '+ comment');
+  addBtn.type = 'button';
+
+  document.body.append(pill, panel, chip, form, addBtn);
+
+  let pending = null; // {section, quote} awaiting form save
+  let hoverSection = null;
+
+  function isOn() { return document.body.classList.contains('rv-on'); }
+
+  function setMode(on) {
+    document.body.classList.toggle('rv-on', on);
+    // Sections become keyboard stops in review mode (Enter opens the form)
+    main.querySelectorAll('[data-rv-section]').forEach(node => {
+      if (on) node.setAttribute('tabindex', '0');
+      else node.removeAttribute('tabindex');
+    });
+    if (!on) { hide(chip); hide(form); hide(addBtn); copyArea.classList.remove('open'); }
+    try { localStorage.setItem(MODE_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+
+  function hide(node) { node.classList.remove('open'); }
+
+  function placeAt(node, x, y) {
+    node.classList.add('open'); // must be visible before measuring
+    const w = node.offsetWidth + 12;
+    node.style.left = Math.max(8, Math.min(x, window.scrollX + document.documentElement.clientWidth - w)) + 'px';
+    node.style.top = y + 'px';
+  }
+
+  function sectionOf(domNode) {
+    let n = domNode;
+    while (n && n.nodeType !== 1) n = n.parentNode;
+    const holder = n && n.closest('[data-rv-section]');
+    return holder ? holder.getAttribute('data-rv-section') : null;
+  }
+
+  function renderList() {
+    list.textContent = '';
+    empty.style.display = comments.length ? 'none' : 'block';
+    badge.textContent = comments.length ? String(comments.length) : '';
+    comments.forEach(c => {
+      const item = el('div', 'rv-item');
+      const sec = el('button', 'rv-sec', c.section ? '[' + c.section + ']' : '[page]');
+      sec.type = 'button';
+      sec.addEventListener('click', () => {
+        const target = c.section && main.querySelector('[data-rv-section="' + c.section + '"]');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      const del = el('button', 'rv-del', '×');
+      del.type = 'button';
+      del.title = 'Delete comment';
+      del.addEventListener('click', () => {
+        comments = comments.filter(x => x.id !== c.id);
+        saveComments(); renderList();
+      });
+      item.append(sec, del);
+      if (c.quote) item.append(el('div', 'rv-quote', '“' + c.quote + '”'));
+      item.append(el('div', 'rv-body', c.text));
+      list.append(item);
+    });
+  }
+
+  function payload() {
+    const n = comments.length;
+    const lines = [];
+    lines.push('## Page feedback - ' + slug);
+    lines.push(n + ' comment' + (n === 1 ? '' : 's') + ' · exported ' + new Date().toISOString());
+    lines.push('');
+    comments.forEach((c, i) => {
+      const where = c.section ? '[' + c.section + ']' : '[page]';
+      const anchor = c.quote ? ' re: "' + c.quote + '"' : ' (whole section)';
+      lines.push((i + 1) + '. ' + where + anchor);
+      String(c.text).split('\n').forEach(t => lines.push('   ' + t));
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  function flash(btn, msg) {
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+    btn.textContent = msg;
+    clearTimeout(btn._rvFlashTimer);
+    btn._rvFlashTimer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1600);
+  }
+
+  function copyManual(text) {
+    copyArea.classList.add('open');
+    copyArea.value = text;
+    copyArea.focus();
+    copyArea.select();
+    try { return document.execCommand('copy'); } catch (e) { return false; }
+  }
+
+  function openForm(x, y, section, quote) {
+    pending = { section: section, quote: quote };
+    formQuote.textContent = quote ? '“' + quote + '”' : '(whole section: ' + (section || 'page') + ')';
+    formText.value = '';
+    hide(chip); hide(addBtn);
+    placeAt(form, x, y);
+    formText.focus();
+  }
+
+  function saveFromForm() {
+    const text = formText.value.trim();
+    if (!text || !pending) { hide(form); return; }
+    comments.push({
+      id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      section: pending.section,
+      quote: pending.quote,
+      text: text,
+      at: new Date().toISOString()
+    });
+    pending = null;
+    saveComments(); renderList();
+    hide(form);
+    const s = window.getSelection();
+    if (s) s.removeAllRanges();
+    pill.focus();
+  }
+
+  pill.addEventListener('click', () => setMode(!isOn()));
+  btnSave.addEventListener('click', saveFromForm);
+  btnCancel.addEventListener('click', () => { pending = null; hide(form); pill.focus(); });
+  form.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { pending = null; hide(form); pill.focus(); }
+  });
+  formText.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveFromForm();
+  });
+
+  // Keyboard path: Tab to a section (tabindex set in review mode), Enter opens
+  // the comment form for it; focus also surfaces the "+ comment" button.
+  main.addEventListener('focusin', e => {
+    if (!isOn() || form.classList.contains('open')) return;
+    const holder = e.target.closest && e.target.closest('[data-rv-section]');
+    if (holder && e.target === holder) {
+      hoverSection = holder.getAttribute('data-rv-section');
+      const rect = holder.getBoundingClientRect();
+      placeAt(addBtn, rect.right + window.scrollX - 90, rect.top + window.scrollY - 10);
+    }
+  });
+  main.addEventListener('keydown', e => {
+    if (!isOn() || e.key !== 'Enter') return;
+    const t = e.target;
+    if (t.nodeType === 1 && t.hasAttribute('data-rv-section')) {
+      e.preventDefault();
+      const rect = t.getBoundingClientRect();
+      openForm(rect.left + window.scrollX + 16, rect.top + window.scrollY + 16,
+        t.getAttribute('data-rv-section'), null);
+    }
+  });
+
+  btnCopy.addEventListener('click', () => {
+    if (!comments.length) { flash(btnCopy, 'nothing to copy'); return; }
+    const text = payload();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => flash(btnCopy, 'copied ✓'),
+        () => flash(btnCopy, copyManual(text) ? 'copied ✓' : 'select + copy below')
+      );
+    } else {
+      flash(btnCopy, copyManual(text) ? 'copied ✓' : 'select + copy below');
+    }
+  });
+
+  btnClear.addEventListener('click', () => {
+    if (!comments.length) return;
+    if (!window.confirm('Clear ' + comments.length + ' comment(s)?')) return;
+    comments = [];
+    saveComments(); renderList();
+    copyArea.classList.remove('open');
+  });
+
+  // Text selection -> chip -> form
+  function placeChipFromSelection(allowHide) {
+    const bail = () => { if (allowHide) hide(chip); };
+    const s = window.getSelection();
+    if (!s || s.isCollapsed || !s.rangeCount) return bail();
+    const range = s.getRangeAt(0);
+    if (!main.contains(range.commonAncestorContainer)) return bail();
+    const quote = s.toString().replace(/\s+/g, ' ').trim();
+    if (!quote) return bail();
+    const rect = range.getBoundingClientRect();
+    // A selection spanning two sections has no single honest address; demote
+    // to page-level and let the agent locate the quote by text. endOffset 0
+    // means the end container contributed nothing (triple-click artifact).
+    const startSec = sectionOf(range.startContainer);
+    let endSec = sectionOf(range.endContainer);
+    if (range.endOffset === 0) endSec = startSec;
+    chip.dataset.section = (startSec === endSec ? startSec : '') || '';
+    chip.dataset.quote = quote.length > QUOTE_MAX ? quote.slice(0, QUOTE_MAX - 1) + '…' : quote;
+    placeAt(chip, rect.left + window.scrollX, rect.bottom + window.scrollY + 6);
+  }
+
+  document.addEventListener('mouseup', e => {
+    if (!isOn()) return;
+    if (e.target.closest && e.target.closest('.rv-pop, .rv-panel, .rv-pill, .rv-add')) return;
+    setTimeout(() => placeChipFromSelection(true), 0);
+  });
+
+  // Touch: long-press selection never fires a mouseup we can use, so follow
+  // selectionchange (debounced, show-only so a mid-click collapse can't yank
+  // the chip out from under a slow tap).
+  let selTimer = null;
+  document.addEventListener('selectionchange', () => {
+    if (!isOn() || form.classList.contains('open')) return;
+    clearTimeout(selTimer);
+    selTimer = setTimeout(() => placeChipFromSelection(false), 250);
+  });
+
+  chip.addEventListener('click', () => {
+    const x = parseFloat(chip.style.left) || 0;
+    const y = parseFloat(chip.style.top) || 0;
+    openForm(x, y, chip.dataset.section || null, chip.dataset.quote || null);
+  });
+
+  // Section hover -> floating "+ comment" button
+  document.addEventListener('mouseover', e => {
+    if (!isOn() || form.classList.contains('open')) return;
+    if (!e.target.closest) return;
+    if (e.target.closest('.rv-add, .rv-pop')) return;
+    const holder = e.target.closest('[data-rv-section]');
+    if (holder) {
+      hoverSection = holder.getAttribute('data-rv-section');
+      const rect = holder.getBoundingClientRect();
+      placeAt(addBtn, rect.right + window.scrollX - 90, rect.top + window.scrollY - 10);
+    } else if (!e.target.closest('.rv-panel, .rv-pill')) {
+      hoverSection = null;
+      hide(addBtn);
+    }
+  });
+
+  addBtn.addEventListener('click', () => {
+    const x = parseFloat(addBtn.style.left) || 0;
+    const y = (parseFloat(addBtn.style.top) || 0) + 26;
+    openForm(x, y, hoverSection, null);
+  });
+
+  renderList();
+  // '1'/'0' are explicit user choices; only auto-open on the comments
+  // heuristic when no choice has been stored yet.
+  let modeSaved = null;
+  try { modeSaved = localStorage.getItem(MODE_KEY); } catch (e) {}
+  if (modeSaved === '1' || (modeSaved === null && comments.length)) setMode(true);
+})();
 </script>
 </body>
 </html>
