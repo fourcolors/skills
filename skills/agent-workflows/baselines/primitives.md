@@ -19,6 +19,7 @@ A workflow that turns fuzzy input into committed work must have a legal, success
 - When the input has no job statement (a problem worth solving plus who benefits), emit a sharp question instead of forcing output.
 - Exactly one of {output, refusal} per unit of input; never both, never neither.
 - The bounce question cites the exact input that made the judge unsure and asks what would surface the missing job statement.
+- A needed project fact that cannot be resolved bounces the same way as a missing job statement.
 - Housekeeping verbs (commit, push, merge, deploy, retry) are never product intent.
 
 ## Evidence over assertion
@@ -26,7 +27,8 @@ A workflow that turns fuzzy input into committed work must have a legal, success
 Every completion claim must carry reproducible evidence, and the orchestrator re-verifies instead of trusting.
 
 - Record the verbatim command, exit code, and saved output; the exit code is the claim, the output is the evidence.
-- The orchestrator re-runs the recorded command on every return; missing evidence means a rejected return.
+- The orchestrator re-runs the recorded command on every return; when the orchestrator cannot execute commands (a Workflow script), it delegates the re-run to an independent verifier and treats that reproduction as the check.
+- Missing evidence means a rejected return.
 - "Done with concerns" is a first-class status, but each concern must be specific and actionable, and the reviewer must address every one.
 
 ## Blocking vs advisory verdicts
@@ -69,7 +71,9 @@ Stages declare abstract capability tiers; one config file binds tiers to models.
 
 - Tiers are fast, standard, reasoning, and heavy; workflows never name concrete models.
 - Judgment and distillation run at reasoning, mechanical parsing at fast, implementation at standard, adversarial grading at heavy.
+- The independent per-axis audit is judgment (reasoning); reserve heavy for adversarial grading panels.
 - Switching providers is a one-line config edit with zero workflow changes.
+- In a composed Workflow script the binding point is a single tier map at the top of the script, spread into each agent call's options.
 
 ## Bounded loops
 
