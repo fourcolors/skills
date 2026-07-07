@@ -78,6 +78,8 @@ const SHIP = { type: 'object', required: ['prUrl', 'ci'], properties: {
 
 // Capability tiers (primitive): stages declare tiers, never concrete models.
 // This map is the script's single tier-to-options binding point; retune here, never per call.
+// The Workflow agent() contract accepts effort 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+// heavy is unused in this composition and reserved for adversarial grading panels.
 const TIER = { fast: { effort: 'low' }, standard: {}, reasoning: { effort: 'high' }, heavy: { effort: 'xhigh' } }
 
 const specPrompt = sc => `${anchor}
