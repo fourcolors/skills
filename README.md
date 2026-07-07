@@ -132,10 +132,12 @@ skills/
     └── agent-workflows/
         ├── SKILL.md       <-- Composition rules & baseline index
         ├── README.md      <-- Human instructions
-        └── baselines/     <-- One file per composable workflow shape
-            ├── ping-pong.md
-            ├── no-mistakes.md
-            └── primitives.md
+        ├── baselines/     <-- One file per composable workflow shape
+        │   ├── ping-pong.md
+        │   ├── no-mistakes.md
+        │   └── primitives.md
+        ├── examples/      <-- Copy-ready composed Workflow scripts
+        └── templates/     <-- Baseline anatomy skeleton for contributors
 ```
 
 ---

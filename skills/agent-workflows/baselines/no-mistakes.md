@@ -3,6 +3,7 @@
 Source of truth: the `no-mistakes` CLI (`axi`) and its driving-manual skill, which own the real pipeline, state, and config.
 If the CLI is installed, the baseline is "drive the tool" - never reimplement the pipeline alongside it.
 Use this file to compose the gate's shape into workflows or environments where the CLI is absent.
+Whether the CLI is installed is a project fact resolved at composition time (SKILL.md procedure step 4): compose either drive-the-tool or this gate, never both.
 
 ## Intent
 
