@@ -2,6 +2,8 @@
 //   goal anchor (primitive) -> ping-pong loop per scenario (baseline) -> no-mistakes gate (baseline).
 // Start from this file when the request matches "build these scenarios and ship them".
 // Adapt the structure freely; every "invariant" comment marks a line that must stay true.
+// Runs only inside the Workflow tool, which injects agent/parallel/pipeline/phase/log/args
+// as globals per its documented contract - this is not a standalone Node script.
 //
 // Invoke as: Workflow({ scriptPath: <your adapted copy>, args: {
 //   goal:      { specific, measurable, achievable, relevant, timeBoundRounds },
@@ -129,7 +131,7 @@ for (const sc of scenarios) {
   for (let round = 0; round < goal.timeBoundRounds && !done; round++) {
     const impl = await agent(implPrompt(sc, spec, failedAxes), { phase: 'Build', schema: IMPL, ...TIER.standard })
     if (!impl) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no implementation returned' }]; continue }
-    if (impl.status === 'green' && impl.greenEvidence && impl.exitCode === 0) {
+    if (impl.status === 'green' && Array.isArray(impl.files) && impl.files.length && impl.testCmd && impl.greenEvidence && impl.exitCode === 0) {
       verdict = await agent(auditPrompt(sc, spec, impl), { phase: 'Audit', schema: VERDICT, ...TIER.reasoning })
       if (!verdict) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no audit verdict returned' }]; continue }
       // Blocking is decided by axis NAME, not the auditor's flag, and absent axes fail closed:
@@ -144,16 +146,21 @@ for (const sc of scenarios) {
         // non-default feature branch, which is exactly the gate's entry precondition.
         // The sha is the evidence; preflight verifies these exact commits before its rebase.
         const committed = await agent(`Commit the audited work for scenario "${sc.name}" on branch ${branch}, message naming the scenario; return the commit sha.`, { phase: 'Build', schema: COMMIT, ...TIER.fast })
-        if (!committed) return { escalate: { scenario: sc.name, reason: 'audited work not committed - gate entry precondition unmet', anchor }, shipped }
+        if (!committed?.sha) return { escalate: { scenario: sc.name, reason: 'no commit sha returned - gate entry precondition unproven', anchor }, shipped }
         shipped.push({ scenario: sc.name, sha: committed.sha, verdict })
         done = true
         continue
       }
-    } else {
-      // The driver's stop-path: status 'broken-spec', or an incomplete green claim (failed closed).
-      // Both are spec-level signals, routed to the navigator below, never back to the driver.
+    } else if (impl.status === 'broken-spec') {
+      // The driver's stop-path: a spec-level signal, routed to the navigator below, never back to the driver.
       verdict = null
-      failedAxes = [{ name: 'On task', pass: false, reason: impl.reason ?? 'driver returned an incomplete green claim' }]
+      failedAxes = [{ name: 'On task', pass: false, reason: impl.reason ?? 'driver reports broken spec' }]
+    } else {
+      // An incomplete green claim (missing files, testCmd, evidence, or nonzero exit) fails closed
+      // as a driver-side gap: the schema cannot enforce branch completeness (no top-level oneOf),
+      // so this guard is what keeps auditPrompt's impl.files access crash-free.
+      verdict = null
+      failedAxes = [{ name: 'Correct', pass: false, reason: 'incomplete green claim - missing files, testCmd, evidence, or nonzero exit' }]
     }
     // Failure routing: only a JUDGED On-task failure re-dispatches the navigator - an
     // On task axis absent from the verdict is an audit defect, and the next round's
@@ -206,7 +213,7 @@ Classify every finding as auto-fix, no-op, or ask-user; skips are explicit, neve
   if (!fixable.length) { i++; continue }
   if (++attempts[stage] > 3) return { escalate: { stage, findings: fixable, anchor }, shipped }
   const fixed = await agent(`Fix exactly these ${stage} findings, nothing else, and commit on ${branch}; return the commit sha: ${JSON.stringify(fixable)}`, { phase: 'Fix', schema: COMMIT, ...TIER.standard })
-  if (!fixed) return { blocked: { stage, reason: 'fix agent returned no commit - the gate cannot re-enter unfixed' }, shipped }
+  if (!fixed?.sha) return { blocked: { stage, reason: 'fix agent returned no commit sha - the gate cannot re-enter unfixed' }, shipped }
   i = 0 // a fix commits new code: re-enter the FULL gate from the first stage
 }
 
