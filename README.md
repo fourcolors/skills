@@ -53,7 +53,8 @@ To prevent prompt bloat and keep context windows highly efficient:
 ## Development & Execution Lifecycle
 
 This diagram illustrates how the workflow skills (`html-discussion`, `ping-pong`, `subagent-memory`, and `scratch`) and custom slash commands (`/discussion`, `/crystallize`) coordinate dynamically throughout your system development process.
-The fifth skill, `agent-workflows`, is not a node in this diagram: it packages the ping-pong loop and the no-mistakes ship gate as composable baselines that dynamically generated workflows start from:
+The fifth skill, `agent-workflows`, is not a node in this diagram: it packages the ping-pong loop and the no-mistakes ship gate as composable baselines that dynamically generated workflows start from.
+The sixth skill, `design-patterns`, is also outside this diagram: it is a decision-first reference an agent consults while implementing, not a workflow stage:
 
 ```mermaid
 graph TD
