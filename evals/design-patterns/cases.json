@@ -1,0 +1,159 @@
+[
+  {
+    "id": "trigger-proxy-decorator",
+    "kind": "trigger",
+    "prompt": "Should this cache wrapper be a Proxy or Decorator?",
+    "shouldLoad": true,
+    "expectedPatterns": ["Proxy", "Decorator"],
+    "forbiddenClaims": ["Every wrapper is an Adapter"]
+  },
+  {
+    "id": "trigger-state-smell",
+    "kind": "trigger",
+    "prompt": "Refactor this repeated switch on order status so transitions are explicit.",
+    "shouldLoad": true,
+    "expectedPatterns": ["State"],
+    "requiredConcepts": ["transition policy", "simple enum remains an option"]
+  },
+  {
+    "id": "trigger-sdk-adapter",
+    "kind": "trigger",
+    "prompt": "Our vendor SDK wrapper renames methods and normalizes error shapes. Review the design.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Adapter"]
+  },
+  {
+    "id": "trigger-abstract-factory-review",
+    "kind": "trigger",
+    "prompt": "Review our implementation of Abstract Factory.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Abstract Factory"]
+  },
+  {
+    "id": "trigger-ui-design-system",
+    "kind": "trigger",
+    "prompt": "Create a React design system with tokens, buttons, forms, and accessibility guidance.",
+    "shouldLoad": false,
+    "expectedPatterns": []
+  },
+  {
+    "id": "trigger-building-facade",
+    "kind": "trigger",
+    "prompt": "Show common Victorian facade design patterns.",
+    "shouldLoad": false,
+    "expectedPatterns": []
+  },
+  {
+    "id": "trigger-business-strategy",
+    "kind": "trigger",
+    "prompt": "Give me a strategy for our product launch.",
+    "shouldLoad": false,
+    "expectedPatterns": []
+  },
+  {
+    "id": "trigger-language-iterator",
+    "kind": "trigger",
+    "prompt": "Explain Python's iterator protocol and fix this broken generator.",
+    "shouldLoad": false,
+    "expectedPatterns": []
+  },
+  {
+    "id": "trigger-schema-pattern",
+    "kind": "trigger",
+    "prompt": "What database schema pattern should we use for multi-tenant SaaS?",
+    "shouldLoad": false,
+    "expectedPatterns": []
+  },
+  {
+    "id": "selection-payment-provider",
+    "kind": "application",
+    "prompt": "A payment service selects one vendor SDK at startup. SDK interfaces and errors differ. Providers are added quarterly. Choose the smallest useful design.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Strategy", "Adapter"],
+    "forbiddenPatterns": ["State", "Abstract Factory"],
+    "requiredConcepts": ["composition root", "one exhaustive switch is acceptable", "normalize SDK errors"]
+  },
+  {
+    "id": "selection-no-pattern",
+    "kind": "application",
+    "prompt": "A 90-line script parses one CSV format, applies two fixed predicates, and writes JSON. No variants are expected. Should we add Factory, Strategy, and Visitor?",
+    "shouldLoad": true,
+    "expectedPatterns": [],
+    "forbiddenPatterns": ["Factory Method", "Strategy", "Visitor"],
+    "requiredConcepts": ["plain functions", "no current variation"]
+  },
+  {
+    "id": "lookalike-wrapper",
+    "kind": "application",
+    "prompt": "A same-interface API wrapper lazily creates its client, caches GETs, retries 429s, traces calls, and converts vendor errors. Is this Proxy, Decorator, Adapter, or several patterns?",
+    "shouldLoad": true,
+    "expectedPatterns": ["Proxy"],
+    "requiredConcepts": ["intent decides", "split decorators only when independently composable", "error translation may be adapter-like"]
+  },
+  {
+    "id": "safety-durable-command",
+    "kind": "safety",
+    "prompt": "Persist commands, execute them in other processes, replay after crashes, charge cards, and compose onboarding steps. Give the minimum safe Command design and failure semantics.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Command"],
+    "requiredConcepts": ["versioned data envelope", "at-least-once", "idempotency", "indeterminate outcome", "compensation"],
+    "forbiddenClaims": ["serializing an object makes it durable", "MacroCommand is atomic", "undo a payment"]
+  },
+  {
+    "id": "safety-repeatable-memento",
+    "kind": "safety",
+    "prompt": "A 2 GB persistent immutable document tree needs 100 reusable checkpoints plus small mutable cursor state. Design repeatable restore without deep-copying the tree.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Memento"],
+    "requiredConcepts": ["immutable root reference", "copy mutable cursor state", "restore must not alias mutable snapshot state", "opaque token"]
+  },
+  {
+    "id": "safety-composite",
+    "kind": "safety",
+    "prompt": "File and Directory share size/delete/move, only Directory can add children, and the tree may be one million nodes deep. Design a type-safe Composite.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Composite", "Iterator"],
+    "requiredConcepts": ["interface segregation", "iterative traversal", "cycle prevention"],
+    "forbiddenClaims": ["compile-time child safety means Composite is inappropriate"]
+  },
+  {
+    "id": "safety-builder-reuse",
+    "kind": "safety",
+    "prompt": "A stateful Builder is reused to produce two products. Define ownership and reset behavior so the second build cannot mutate the first result.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Builder"],
+    "requiredConcepts": ["single-use or reset", "transfer completed product", "fresh internal product"]
+  },
+  {
+    "id": "safety-abstract-factory-consistency",
+    "kind": "safety",
+    "prompt": "An Abstract Factory returns Button and Checkbox interfaces. Does that alone make mixing platform families impossible?",
+    "shouldLoad": true,
+    "expectedPatterns": ["Abstract Factory"],
+    "requiredConcepts": ["not guaranteed by interfaces alone", "consistency boundary", "encode family relationship for a hard guarantee"]
+  },
+  {
+    "id": "safety-proxy-cleanup",
+    "kind": "safety",
+    "prompt": "Implement a lazy protection Proxy used concurrently. Access checks use request identity and a lock is acquired around calls. Define safe initialization and cleanup.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Proxy"],
+    "requiredConcepts": ["trusted request context", "atomic initialization", "finally", "remote failures are observable"]
+  },
+  {
+    "id": "safety-flyweight-key",
+    "kind": "safety",
+    "prompt": "A concurrent glyph Flyweight pool currently keys only by codepoint, but glyph state includes font face, size, style, and variation axes. Review it.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Flyweight"],
+    "requiredConcepts": ["key every intrinsic determinant", "atomic get-or-create", "immutable safe publication"]
+  },
+  {
+    "id": "safety-untrusted-interpreter",
+    "kind": "safety",
+    "prompt": "Users submit boolean expressions to our Interpreter-based rules engine. Define the security and resource limits.",
+    "shouldLoad": true,
+    "expectedPatterns": ["Interpreter"],
+    "requiredConcepts": ["no host eval", "AST depth", "step or time limit", "unknown symbol handling", "capability whitelist"]
+  }
+]
