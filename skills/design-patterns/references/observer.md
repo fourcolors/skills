@@ -33,7 +33,7 @@ interface Subject {
 }
 
 class ConcreteSubject implements Subject {
-    private observers: Set<Observer> = []
+    private observers: Set<Observer> = new Set()
     private state: State
 
     attach(observer): Subscription {

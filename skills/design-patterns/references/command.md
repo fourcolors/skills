@@ -25,7 +25,7 @@ interface Command {
 }
 
 interface UndoableCommand extends Command {
-    undo()
+    undo(): boolean // reports whether restoration succeeded
 }
 
 class Light {
@@ -49,10 +49,11 @@ class TurnOnLightCommand implements UndoableCommand {
         executed = true
     }
 
-    undo() {
+    undo(): boolean {
         require(executed)
         if previous then receiver.turnOn() else receiver.turnOff()
         executed = false
+        return true // restoration succeeded
     }
 }
 
@@ -68,8 +69,9 @@ class Invoker {
     undoLast(): boolean {
         if history.isEmpty() return false
         command = history.peek()
-        command.undo()
-        history.pop() // retain the entry when undo throws or reports failure
+        if not command.undo(): // undo reports success/failure
+            return false       // retain the entry so the recovery point survives a failed undo
+        history.pop()          // remove from history only after a successful undo
         return true
     }
 }
