@@ -46,6 +46,7 @@ To prevent prompt bloat and keep context windows highly efficient:
 | [`subagent-memory`](./skills/subagent-memory) | **Cognition** | An observational memory discipline for subagents using date-grouped entries, priority emojis, and a CLI reflection pass to avoid context cliff issues. |
 | [`html-discussion`](./skills/html-discussion) | **Visual Planning** | Script-driven, byte-addressable HTML planning artifact generator supporting option comparison tables, neomorphic/glassmorphism themes, and structured snippets. |
 | [`agent-workflows`](./skills/agent-workflows) | **Orchestration** | A composable baseline library (ping-pong build loop, no-mistakes ship gate, cross-cutting primitives) that agents load to compose dynamic multi-agent workflows on the fly. |
+| [`design-patterns`](./skills/design-patterns) | **Reference** | A decision-first, language-agnostic guide to all 23 Gang-of-Four patterns, with direct per-pattern references, look-alike disambiguation, and explicit anti-over-engineering guardrails. |
 
 ---
 
@@ -129,15 +130,23 @@ skills/
     │   ├── snippets/      <-- HTML slot component blueprints
     │   ├── themes/        <-- Glassmorphism & neomorphism CSS themes
     │   └── commands/      <-- Custom slash command definitions (crystallize, discussion)
-    └── agent-workflows/
-        ├── SKILL.md       <-- Composition rules & baseline index
+    ├── agent-workflows/
+    │   ├── SKILL.md       <-- Composition rules & baseline index
+    │   ├── README.md      <-- Human instructions
+    │   ├── baselines/     <-- One file per composable workflow shape
+    │   │   ├── ping-pong.md
+    │   │   ├── no-mistakes.md
+    │   │   └── primitives.md
+    │   ├── examples/      <-- Copy-ready composed Workflow scripts
+    │   └── templates/     <-- Baseline anatomy skeleton for contributors
+    └── design-patterns/
+        ├── SKILL.md       <-- Router: catalog, how-to-choose, look-alike table
         ├── README.md      <-- Human instructions
-        ├── baselines/     <-- One file per composable workflow shape
-        │   ├── ping-pong.md
-        │   ├── no-mistakes.md
-        │   └── primitives.md
-        ├── examples/      <-- Copy-ready composed Workflow scripts
-        └── templates/     <-- Baseline anatomy skeleton for contributors
+        └── references/    <-- One directly loadable file per GoF pattern
+            ├── singleton.md
+            ├── adapter.md
+            ├── strategy.md
+            └── ...        <-- 23 total references
 ```
 
 ---
@@ -164,6 +173,9 @@ npx skills add fourcolors/skills --skill html-discussion -a claude-code
 
 # Install Agent Workflows
 npx skills add fourcolors/skills --skill agent-workflows -a claude-code
+
+# Install Design Patterns
+npx skills add fourcolors/skills --skill design-patterns -a claude-code
 ```
 
 ### Global (User-Scoped)
@@ -189,4 +201,10 @@ npx skills add . --list
 Verify local compilation and copying by installing directly from your working directory:
 ```bash
 npx skills add . --skill <skill-name> -a claude-code
+```
+
+### 3. Run Skill-Specific Evals
+Skills with deterministic or adversarial validation surfaces keep them under `evals/<skill-name>/` rather than shipping them in the installed skill payload. For design-patterns:
+```bash
+node evals/design-patterns/run.mjs
 ```
