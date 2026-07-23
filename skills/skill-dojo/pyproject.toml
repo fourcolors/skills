@@ -1,0 +1,19 @@
+[project]
+name = "skill-dojo"
+version = "0.1.0"
+description = "Sensei skill for authoring self-evaluating Claude Code skills"
+requires-python = ">=3.11"
+dependencies = [
+  "anthropic>=0.40.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-mock>=3.12",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

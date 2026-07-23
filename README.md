@@ -47,6 +47,7 @@ To prevent prompt bloat and keep context windows highly efficient:
 | [`html-discussion`](./skills/html-discussion) | **Visual Planning** | Script-driven, byte-addressable HTML planning artifact generator supporting option comparison tables, neomorphic/glassmorphism themes, and structured snippets. |
 | [`agent-workflows`](./skills/agent-workflows) | **Orchestration** | A composable baseline library (ping-pong build loop, no-mistakes ship gate, cross-cutting primitives) that agents load to compose dynamic multi-agent workflows on the fly. |
 | [`design-patterns`](./skills/design-patterns) | **Reference** | A decision-first, language-agnostic guide to all 23 Gang-of-Four patterns, with direct per-pattern references, look-alike disambiguation, and explicit anti-over-engineering guardrails. |
+| [`skill-dojo`](./skills/skill-dojo) | **Authoring** | Sensei workflow that grills you on purpose, writes a self-contained Claude Code skill with an embedded evaluation contract, scores a seed corpus, and hands off a baseline. |
 
 ---
 
@@ -140,14 +141,21 @@ skills/
     │   │   └── primitives.md
     │   ├── examples/      <-- Copy-ready composed Workflow scripts
     │   └── templates/     <-- Baseline anatomy skeleton for contributors
-    └── design-patterns/
-        ├── SKILL.md       <-- Router: catalog, how-to-choose, look-alike table
+    ├── design-patterns/
+    │   ├── SKILL.md       <-- Router: catalog, how-to-choose, look-alike table
+    │   ├── README.md      <-- Human instructions
+    │   └── references/    <-- One directly loadable file per GoF pattern
+    │       ├── singleton.md
+    │       ├── adapter.md
+    │       ├── strategy.md
+    │       └── ...        <-- 23 total references
+    └── skill-dojo/
+        ├── SKILL.md       <-- Sensei grill + self-evaluation contract
         ├── README.md      <-- Human instructions
-        └── references/    <-- One directly loadable file per GoF pattern
-            ├── singleton.md
-            ├── adapter.md
-            ├── strategy.md
-            └── ...        <-- 23 total references
+        ├── pyproject.toml <-- Helper scripts package
+        ├── templates/     <-- Skeleton SKILL.md for authored skills
+        ├── scripts/       <-- Contract parse, judges, score, corpus, writer
+        └── tests/         <-- pytest suite for the scripts
 ```
 
 ---
@@ -177,6 +185,9 @@ npx skills add fourcolors/skills --skill agent-workflows -a claude-code
 
 # Install Design Patterns
 npx skills add fourcolors/skills --skill design-patterns -a claude-code
+
+# Install Skill Dojo
+npx skills add fourcolors/skills --skill skill-dojo -a claude-code
 ```
 
 ### Global (User-Scoped)

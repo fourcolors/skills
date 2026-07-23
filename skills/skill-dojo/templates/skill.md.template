@@ -1,0 +1,24 @@
+---
+name: {{name}}
+description: {{description}}
+---
+
+## Contract
+
+> **Frozen.** Reflector cannot edit autonomously. Human revises with approval.
+
+### Objective
+
+- **Metric:** mean pass rate across corpus
+- **Stop:** {{plateau_iterations}} iterations without improvement
+- **Baseline:** {{baseline}}
+
+### Measurements
+
+{{measurements_block}}
+
+## Skill
+
+> **Lever.** Reflector mutates this section + the frontmatter `description` freely.
+
+{{body}}
