@@ -49,13 +49,24 @@ cp ~/.claude/skills/ping-pong/agents/*.md ~/.claude/agents/
 
 *Note: You may need to restart your AI assistant's session after copying the agent files for the new agent types to register.*
 
+**Upgrading:** the agents are copied, not symlinked, so pulling a new version of the skill does not update `.claude/agents/`. Re-run the `cp` above after every skill update, then restart the session. The lead's pre-flight STOPs if the copied `pp-auditor.md` is stale.
+
 ---
 
 ## Configuration Notes
 
 - **Model**: the agents ship with `model: inherit`, so each spawn follows whatever model your session is running — no surprise cost pinning. If you want maximum-strength specs or audits regardless of session model, edit the copied agent files in `.claude/agents/` and pin (e.g. `model: opus`) per role.
 - **Agent teams** (pair messaging between ping and pong) is an experimental Claude Code feature gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Without it, the workflow still runs — the lead mediates questions instead of the pair messaging directly, or you can use solo-lead mode.
-- **Cross-model audits** (`consult` / `rotate` / `panel` modes) need the `gemini` and/or `codex` CLIs installed and authenticated (or equivalent orchestrator agents defined). The lead degrades gracefully to Claude-only audits when they're absent.
+- **Cross-model audits** (`consult` / `rotate` / `panel` modes) need at least one **peer auditor**. Declare peers in your project's `CLAUDE.md` or `AGENTS.md` under a `## Ping-pong audit peers` heading, one line each, with a slug, either an `agent:` subagent type or a `run:` shell command (`{brief}` is substituted with the audit brief), and the model family:
+
+  ```
+  ## Ping-pong audit peers
+  - slug: gem  | agent: gemini-cli-orchestrator        | family: google
+  - slug: cdx  | run: codex exec "{brief}"             | family: openai
+  - slug: qwen | run: ollama run qwen3-coder "{brief}" | family: qwen
+  ```
+
+  That is an example roster; substitute whatever you actually have, one line each. Declare nothing and the lead probes for `*-cli-orchestrator` agent types and for the example CLIs on `PATH`, so an existing setup keeps working with no configuration. With no peer reachable the lead runs every audit as `home-only` and says so in the verdict.
 
 ---
 
@@ -71,7 +82,7 @@ ping-pong/
 │   └── pp-auditor.md
 └── references/         Loaded on demand by the lead, not at trigger time
     ├── briefs.md       Dispatch briefs for all three agents + cross-model consult
-    ├── audit-modes.md  Skip rules, independence protocol, synthesis guidance
+    ├── audit-modes.md  Roster, skip rules, independence protocol, synthesis
     └── monitoring.md   Monitor-tool setup + manual-poll fallback
 ```
 
@@ -80,7 +91,7 @@ ping-pong/
 ## Workflow Overview
 
 Once installed and bootstrapped, point the lead orchestrator at a task, a task list, or a scoped plan (or invoke `/ping-pong`). The orchestrator will:
-1. Pre-flight the environment (agents registered, teams/CLIs available, cache gitignored).
+1. Pre-flight the environment (agents registered and current, teams available, audit roster resolved, cache gitignored).
 2. Initialize `GOAL.md` at `.claude/ping-pong/<work-id>/GOAL.md` to define the SMART target.
 3. Spawn `pp-ping` to spec each scenario via a failing test.
 4. Spawn `pp-pong` to implement until the test is green.
