@@ -82,7 +82,9 @@ Work ID: <team-name slug>
 Goal file: .claude/ping-pong/<work-id>/GOAL.md  ← READ for "on task" + "extra mile"
 Test path: <from task description>
 Diff: <git rev-range>
-auditor_mode: <claude-solo | consult | rotate | panel>
+auditor_mode: <home-only | consult | rotate | panel>   (legacy `claude-solo` = `home-only`)
+auditor_slot: home
+verdict_file: .claude/ping-pong/<work-id>/<task-id>/home_audit.md
 Task-specific FAIL conditions (optional, lead-added):
 - <pattern the lead has noticed across recent cycles>
 
@@ -108,31 +110,32 @@ that emits a PER-AXIS verdict (not a single overall PASS/FAIL):
 - Overall: PASS  (all four blocking axes PASS; list advisory findings)
          | FAIL (any blocking axis fails — lead routes to ping or pong by the failed axis)
 
-For consult/panel modes, ALSO write your independent verdict to:
-.claude/ping-pong/<work-id>/<task-id>/claude_audit.md
+For any mode other than home-only, ALSO write your independent verdict to the
+verdict_file above (.claude/ping-pong/<work-id>/<task-id>/home_audit.md).
 (separate file preserves "write before reading others" independence)
 ```
 
-## Cross-model consult brief (lead → Gemini / Codex)
+## Cross-model consult brief (lead → peer auditors)
 
-Deliver this via the `gemini-cli-orchestrator` / `codex-cli-orchestrator` agents if the host project has them, or drive the `gemini` / `codex` CLIs directly via Bash. Same brief either way:
+Deliver this via the peer's roster entry, either its `agent:` subagent type or its `run:` command with `{brief}` substituted; see `audit-modes.md`. Same brief either way:
 
 ```
 Cross-model audit consultation for task <task-id> (work-id: <work-id>).
+Your auditor slug: <slug>
+Your verdict file: .claude/ping-pong/<work-id>/<task-id>/<slug>_audit.md
 
-You are an independent second pair of eyes. DO NOT read pp-auditor's verdict
-until you've formed your own opinion.
+You are an independent second pair of eyes. DO NOT read the home auditor's
+verdict until you've formed your own opinion.
 
 1. Read the task (intent + ping's spec + pong's evidence sections) and the test
    pp-ping wrote (path in task description). Read the diff: git diff <rev-range>.
 2. Re-run the test yourself.
 3. Validate referenced cache files exist at
    .claude/ping-pong/<work-id>/<task-id>/ (test_output.txt, judge_samples.md if LLM seam).
-4. Form an independent verdict — write it to
-   .claude/ping-pong/<work-id>/<task-id>/<your-model>_audit.md FIRST.
-5. THEN read .claude/ping-pong/<work-id>/<task-id>/claude_audit.md.
-   Note anything you found that Claude missed.
+4. Form an independent verdict and write it to your verdict file above FIRST.
+5. THEN read .claude/ping-pong/<work-id>/<task-id>/home_audit.md.
+   Note anything you found that the home auditor missed.
 
 Report back: PASS / FAIL + one concrete reason + confidence +
-findings missed by Claude.
+findings missed by the home auditor.
 ```

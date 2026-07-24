@@ -23,8 +23,7 @@ The lead is the orchestrator — accepts work in whatever shape you hand it, dec
  pp-ping    pp-pong    pp-auditor    (lead-spawned helpers
  navigator  driver     QC + sanity    as needed: codebase-analyzer,
                        check          web-search-researcher,
-                                       gemini-cli-orchestrator,
-                                       codex-cli-orchestrator, ...)
+                                       peer auditors from the roster, ...)
 ```
 
 ## Input is flexible
@@ -50,7 +49,7 @@ You're the **floor**, not the steering wheel. The lead bubbles to you only when 
 
 **The spec IS the failing test, written in-place using the project's existing conventions.** pp-ping investigates where the project keeps tests for the relevant seam — discover the test directory and runner from the project's config / build manifest, then copy the shape of neighboring tests — and writes the failing test there. The codebase becomes the single source of truth. pp-pong implements until the test passes; pp-auditor reads the diff and reproduces the test from the codebase.
 
-`.claude/ping-pong/<work-id>/<task-id>/` is **only a cycle cache** — gitignored ephemera holding large blobs the lead and audit can consult during synthesis: raw test output, judge samples, and (for cross-model audits) each model's independent verdict. Not specs. Not code. Not structured evidence — that lives in the task description via `TaskUpdate`. The cache is reference material; if you delete it, the next run still works because the spec lives in the codebase and the evidence lives in the task.
+`.claude/ping-pong/<work-id>/<task-id>/` is **only a cycle cache** — gitignored ephemera holding large blobs the lead and audit can consult during synthesis: raw test output, judge samples, and (for multi-auditor modes) each auditor's independent verdict. Not specs. Not code. Not structured evidence — that lives in the task description via `TaskUpdate`. The cache is reference material; if you delete it, the next run still works because the spec lives in the codebase and the evidence lives in the task.
 
 This split keeps the spec executable and committable; the cache exists only as long as the cycle is interesting.
 
@@ -62,7 +61,7 @@ This split keeps the spec executable and committable; the cache exists only as l
 | `pp-pong` | **Driver** | Implementer. Reads the failing test from the codebase, implements until it passes (RED→GREEN), writes evidence to the cycle cache. | `.claude/agents/pp-pong.md` |
 | `pp-auditor` | **Over-the-shoulder QC** | Reads the diff, reproduces the test, checks pong's work on four blocking axes — **on task, correct, right, smart** — plus an advisory **extra mile** axis. Asks "is this dumb?" — not just a test runner. | `.claude/agents/pp-auditor.md` |
 
-These exist as predefined agents — not inlined as on-the-fly prompts — so their `MEMORY.md` accumulates craft over time. After 50 audits the auditor knows which model catches which class of bug; that compounding is the load-bearing reason to predefine.
+These exist as predefined agents — not inlined as on-the-fly prompts — so their `MEMORY.md` accumulates craft over time. After 50 audits the auditor knows which peer catches which class of bug; that compounding is the load-bearing reason to predefine.
 
 ## Team model
 
@@ -70,7 +69,7 @@ The lead calls `TeamCreate({team_name: "pp-<work-id>"})` once per work session. 
 
 **On the team** — `pp-ping` + `pp-pong`. The pair can `SendMessage` each other mid-cycle: if pong hits an ambiguous assertion, it asks ping directly instead of bouncing through the lead. This is the pair-programming model — navigator and driver coordinate without an intermediary.
 
-**Off the team** — `pp-auditor`. Reports only to the lead. If the auditor were on the team, ping could ask "would this pass your bar?" and pong could ask "is this hygienic enough?" — both would compromise independence. The audit's value comes from sitting outside the pair's conversation. Same reason cross-model auditors (Gemini, Codex) write verdicts to separate files before reading each other's. Because the auditor is spawned as a plain subagent, its tool allowlist explicitly includes `TaskGet`, `TaskUpdate`, and `Write` — off-team agents get nothing auto-granted.
+**Off the team** — `pp-auditor`. Reports only to the lead. If the auditor were on the team, ping could ask "would this pass your bar?" and pong could ask "is this hygienic enough?" — both would compromise independence. The audit's value comes from sitting outside the pair's conversation. Same reason peer auditors write verdicts to separate files before reading each other's. Because the auditor is spawned as a plain subagent, its tool allowlist explicitly includes `TaskGet`, `TaskUpdate`, and `Write` — off-team agents get nothing auto-granted.
 
 **Spawn fresh per scenario, not long-lived workers.** Each scenario gets a new `Agent({subagent_type: "pp-ping", ...})` invocation — fresh context, no anchoring on prior cycles. The `team_name` carries the identity and SendMessage routing; the member is ephemeral. Memory persists via `MEMORY.md`; context resets every dispatch.
 
@@ -105,9 +104,22 @@ The choice can be per-work-session OR per-scenario inside one session: you might
      agents still run, memory discipline degrades.
    - Agent teams available? If not → plain spawns + lead-mediated questions,
      or solo-lead mode (see "Platform gate" above).
-   - Planning any auditor_mode beyond claude-solo? Verify the gemini/codex
-     CLIs (or their orchestrator agents) exist; degrade to claude-solo with
-     a logged warning if not.
+   - Copied pp-auditor.md mentions home_audit.md? If it still says
+     claude_audit.md the install is stale → STOP; re-run the cp from the
+     README. A stale copy writes verdicts where the lead never looks and
+     silently degrades a panel to a solo audit.
+   - Planning any auditor_mode beyond home-only? RESOLVE THE AUDIT ROSTER.
+     Slot `home` is always pp-auditor and is never rotated out. Read the host
+     CLAUDE.md / AGENTS.md for a "## Ping-pong audit peers" block; with no
+     block, probe for *-cli-orchestrator agent types in .claude/agents/ and
+     ~/.claude/agents/ plus the example CLIs on PATH (e.g. `gemini`, `codex`)
+     via `command -v`. Slug each peer, keep one entry per underlying tool
+     (an orchestrator agent and the CLI it wraps are one reviewer, not two),
+     confirm it resolves once, warn if two
+     share a family, and log the resolved roster in one line. Ask the user
+     nothing. Zero peers → every mode runs home-only. Slug rules, delivery,
+     and the degradation table: references/audit-modes.md. A pre-stamped
+     `auditor_mode: claude-solo` means `home-only`.
    - Ensure .claude/ping-pong/ is gitignored in the host repo (append if missing).
 1. TeamCreate({team_name: "pp-<work-id>"})   (dispatched mode, teams available)
 2. Write a SMART goal at .claude/ping-pong/<work-id>/GOAL.md.
@@ -129,10 +141,15 @@ The choice can be per-work-session OR per-scenario inside one session: you might
         TaskUpdates the task with a ## Pong (impl) section, writes large outputs
         to the cycle cache, returns
    d. AUDIT (depends on auditor_mode — see table; detail in references/audit-modes.md):
-      - claude-solo  → pp-auditor only
-      - consult      → pp-auditor + Gemini + Codex (parallel), lead synthesizes
-      - rotate       → one model round-robin per cycle; pp-auditor as backstop
-      - panel        → all three audit independently; lead judges majority + dissent
+      - home-only → pp-auditor alone
+      - consult   → pp-auditor + every roster peer in parallel, lead synthesizes
+      - rotate    → pp-auditor + one roster peer, round-robin per cycle
+      - panel     → pp-auditor + every roster peer, independently; lead applies
+                    the confirmation rule
+      Verify each expected <slug>_audit.md exists before synthesizing; a peer
+      that returned a message but wrote no file counts as absent.
+      Stamp `Reviewers: home + <slug list> (R of N reachable)` into the
+      ## Auditor (verdict) section so the record shows how many eyes ran.
    e. ROUTE on the per-axis verdict:
       - All four blocking axes PASS → mark task completed; if Extra mile is
         ADVISORY, accept and log it, or re-dispatch pong for the sibling fix
@@ -216,12 +233,28 @@ The lever has limits: don't pile on rules without trimming. If the auditor brief
 
 ## Audit modes
 
+Every mode runs the **home auditor**, which is `pp-auditor` on the session model.
+Modes differ in how many **peer auditors** join it and in how the lead combines the verdicts.
+Peers come from the audit roster the lead resolves once per work session at pre-flight.
+
 | Mode | Auditors | Time | Default for |
 |---|---|---|---|
-| `claude-solo` | pp-auditor only | ~30s | Deterministic scenarios |
-| `consult` | pp-auditor + Gemini + Codex (parallel), lead synthesizes | ~1.5 min | LLM-compliance seams |
-| `rotate` | One of {Claude, Gemini, Codex} round-robin per cycle | ~30–60s | Long tasks, model variety |
-| `panel` | All three audit independently; lead judges majority + dissent | ~3 min | High-blast-radius seams (see auto-promotion) |
+| `home-only` | home auditor alone | ~30s | Deterministic scenarios |
+| `consult` | home + every roster peer in parallel, lead synthesizes | ~1.5 min | LLM-compliance seams |
+| `rotate` | home + one roster peer, round-robin per cycle | ~30–60s | Long tasks, reviewer variety |
+| `panel` | home + every roster peer, each independent; lead applies the confirmation rule | ~3 min | High-blast-radius seams (see auto-promotion) |
+
+Times assume two reachable peers and scale with roster size.
+`home-only` is an auditor_mode (who audits); solo-lead is an orchestration mode (whether the lead dispatches subagents at all).
+They are independent axes, so never read `home-only` as `solo-lead`.
+`home-only` was called `claude-solo` before the roster existed; the lead accepts `claude-solo` as a legacy alias for one release, normalizes it at routing, and logs a one-line deprecation.
+
+**Roster size changes what these modes can promise.**
+With zero peers resolved, all four modes run `home-only` and the lead logs the degradation.
+With one peer, the rotation ring has a single entry and `consult` and `panel` dispatch that same peer every cycle.
+A finding is CONFIRMED when two or more auditors flag it independently, at any roster size, and the lead treats it as blocking whatever severity labels came attached.
+A finding flagged by exactly one auditor is SINGLE-SOURCE and the lead adjudicates it on evidence rather than by vote.
+This replaces the old majority rule, which was undefined at two auditors and tied at four.
 
 **Auto-promotion rules (lead applies during decomposition).** Adapt the project-specific row to whatever bubble-up categories the host project's CLAUDE.md / AGENTS.md declares; the rest is general:
 
@@ -235,9 +268,16 @@ The lever has limits: don't pile on rules without trimming. If the auditor brief
 | Touches destructive DB ops (`drop`, `delete from`), schema migrations, or force-push | `panel` |
 | Anything the host project's CLAUDE.md flags as "bubble up to the user" | `panel` |
 
-These mirror the typical bubble-up categories in a project's house rules — cross-model audit fires exactly where you'd want a second opinion anyway.
+These mirror the typical bubble-up categories in a project's house rules, so cross-model audit fires exactly where you'd want a second opinion anyway.
 
-Run-time detail — when `claude-solo` may be skipped on trivial seams, the write-before-read independence protocol, cross-model delivery options (orchestrator agents vs direct CLI), synthesis and blindspot weighting, rotation state — lives in **references/audit-modes.md**. Read it before running any non-default audit mode. `consult` / `rotate` / `panel` never skip the audit.
+**When a promoted mode cannot be honored.**
+A mode the lead reached by auto-promotion degrades silently to `home-only` with one logged line, because blocking on the lead's own inference would stall autonomous execution.
+A mode the user explicitly asked for bubbles once, states that no audit peers resolved, and hands the user a ready-to-paste `## Ping-pong audit peers` block for their CLAUDE.md.
+Either way the cycle proceeds; the lead never stalls waiting for a peer.
+
+Run-time detail lives in **references/audit-modes.md**: how the lead resolves the roster and degrades when it is empty, when `home-only` may be skipped on trivial seams, the write-before-read independence protocol and the `<slug>_audit.md` naming rule, peer delivery options (orchestrator agents or direct CLI), the adjudication ladder for disagreeing verdicts, and rotation state.
+Read it before running any mode beyond `home-only`.
+`consult` / `rotate` / `panel` never skip the audit.
 
 ## Monitoring
 
@@ -263,7 +303,7 @@ This is the lead's call. The skill is intentionally not prescriptive. Common cas
 - **Spec has thin context** → spawn `codebase-analyzer` or `Explore` before dispatching pp-ping
 - **Unfamiliar library / SDK version** → spawn `web-search-researcher` before specifying
 - **Cross-model audit needed** → per `auditor_mode` (references/audit-modes.md)
-- **Adversarial second opinion on a tricky impl** → `codex-cli-orchestrator` or the `codex` CLI
+- **Adversarial second opinion on a tricky impl** → a peer auditor from the roster (references/audit-modes.md); e.g. a `codex-cli-orchestrator` agent or the `codex` CLI
 - **Long-running smoke test** → `Monitor` on the test process
 
 Helpers report to the lead, not to ping/pong/auditor. Workers stay focused on their role; if they need help, they ask the lead.
@@ -288,7 +328,7 @@ Three places hold cycle state, each suited to its data shape:
 
 1. **The codebase** — spec (failing test) and impl (diff). Durable, committable, the actual contract.
 2. **The task** (via `TaskUpdate` → description) — structured small data: ping's spec section, pong's evidence section, auditor's verdict section. Queryable via `TaskGet`; serves as the built-in audit trail.
-3. **The cache** — only LARGE / RAW blobs that would bloat the task description, plus cross-model audit verdicts (kept as separate files to enforce write-before-read independence).
+3. **The cache** — only LARGE / RAW blobs that would bloat the task description, plus per-auditor verdicts from multi-auditor modes (kept as separate files to enforce write-before-read independence).
 
 ```
 .claude/ping-pong/<work-id>/                       (gitignored; per-session cache root)
@@ -296,9 +336,8 @@ Three places hold cycle state, each suited to its data shape:
 └── <task-id>/                    (one subdir per scenario; safe to delete after audit closes)
     ├── test_output.txt           pp-pong writes — raw test stdout/stderr
     ├── judge_samples.md          pp-pong writes — LLM seams only (N≥5 raw outputs)
-    ├── claude_audit.md           consult/panel only — Claude's independent verdict
-    ├── gemini_audit.md           consult/panel only — Gemini's independent verdict
-    └── codex_audit.md            consult/panel only — Codex's independent verdict
+    └── <slug>_audit.md           any mode but home-only: one per auditor,
+                                  home_audit.md plus one per peer
 ```
 
 `<work-id>` is the `team_name` slug (e.g. team `pp-auth-rollout` → cache at `.claude/ping-pong/auth-rollout/`), so all scenarios of one work session share a parent directory — one delete cleans the whole session. `GOAL.md` lives at the work-id root because the goal applies to the whole session.
@@ -320,4 +359,4 @@ Three places hold cycle state, each suited to its data shape:
 - Time-bound section of GOAL.md exceeded → escalate to user with current state
 - Monitor logs `ALERT:` for >10 min with no lead action → escalate
 - A `spec.md` or `evidence.md` or `audit.md` appears in the cache → STOP — that's the old shape. The spec is a real test in the codebase; evidence and verdict live in the task description.
-- The cache contains anything besides `GOAL.md` (work-id root) or large blobs / cross-model verdicts (task-id subdirs) → STOP — that data belongs in the task description, not a file
+- The cache contains anything besides `GOAL.md` (work-id root) or large blobs / `<slug>_audit.md` verdicts (task-id subdirs) → STOP — that data belongs in the task description, not a file
