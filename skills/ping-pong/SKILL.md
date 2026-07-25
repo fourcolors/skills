@@ -115,11 +115,11 @@ The choice can be per-work-session OR per-scenario inside one session: you might
      ~/.claude/agents/ plus the example CLIs on PATH (e.g. `gemini`, `codex`)
      via `command -v`. Slug each peer, keep one entry per underlying tool
      (an orchestrator agent and the CLI it wraps are one reviewer, not two),
-     confirm it resolves once, warn if two
-     share a family, and log the resolved roster in one line. Ask the user
+     confirm it resolves once, warn if two share a family, and log the
+     resolved roster in one line. Ask the user
      nothing. Zero peers → every mode runs home-only. Slug rules, delivery,
-     and the degradation table: references/audit-modes.md. A pre-stamped
-     `auditor_mode: claude-solo` means `home-only`.
+     and the degradation table: references/audit-modes.md. An `auditor_mode`
+     you don't recognize means `home-only`; log the value and move on.
    - Ensure .claude/ping-pong/ is gitignored in the host repo (append if missing).
 1. TeamCreate({team_name: "pp-<work-id>"})   (dispatched mode, teams available)
 2. Write a SMART goal at .claude/ping-pong/<work-id>/GOAL.md.
@@ -247,7 +247,9 @@ Peers come from the audit roster the lead resolves once per work session at pre-
 Times assume two reachable peers and scale with roster size.
 `home-only` is an auditor_mode (who audits); solo-lead is an orchestration mode (whether the lead dispatches subagents at all).
 They are independent axes, so never read `home-only` as `solo-lead`.
-`home-only` was called `claude-solo` before the roster existed; the lead accepts `claude-solo` as a legacy alias for one release, normalizes it at routing, and logs a one-line deprecation.
+Any `auditor_mode` outside this table resolves to `home-only`, and the lead logs the unrecognized value once rather than stopping.
+That covers a plan pre-scoped against an older vocabulary (`claude-solo` was this mode's name before the roster existed), a mode renamed in a future version, and a plain typo, all through one path instead of a table of aliases.
+An audit that runs is worth more than an audit that refuses over a name.
 
 **Roster size changes what these modes can promise.**
 With zero peers resolved, all four modes run `home-only` and the lead logs the degradation.
