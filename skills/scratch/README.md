@@ -12,11 +12,11 @@ Use `.scratch/` for:
 
 ## Core rules
 
-- **Idempotent** — scripts should be safe to rerun.
-- **Clean on green** — delete one-off scripts when they succeed.
-- **Keep failed evidence** — failed runs can stay while debugging.
-- **Promote when reused** — if a script is useful twice, move it into `bin/`, `scripts/`, or a real module.
-- **No secrets** — do not store `.env`, credentials, tokens, or private keys in `.scratch/`.
+- **Idempotent** - scripts should be safe to rerun.
+- **Clean on green** - delete one-off scripts when they succeed.
+- **Keep failed evidence** - failed runs can stay while debugging.
+- **Promote when reused** - if a script is useful twice, move it into `bin/`, `scripts/`, or a real module.
+- **No secrets** - do not store `.env`, credentials, tokens, or private keys in `.scratch/`.
 
 ## Hooks
 

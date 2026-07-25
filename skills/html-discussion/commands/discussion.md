@@ -5,7 +5,7 @@ argument-hint: [topic-slug] | ship <slug>
 
 A one-step entrypoint for the discussion lifecycle. Three modes based on `$ARGUMENTS`:
 
-**Mode 1 — no arguments:** open `docs/discussions/INDEX.html` in the browser. That's the morning landing page; most-recent threads are at the top (active work). Use this when the user just wants to see what's going on.
+**Mode 1 - no arguments:** open `docs/discussions/INDEX.html` in the browser. That's the morning landing page; most-recent threads are at the top (active work). Use this when the user just wants to see what's going on.
 
 ```
 open docs/discussions/INDEX.html
@@ -13,7 +13,7 @@ open docs/discussions/INDEX.html
 
 Then say: "Opened INDEX. Top of the list = most active threads. Click into one to continue, or invoke `/discussion <topic>` to start something new."
 
-**Mode 2 — topic slug provided:** scaffold a new discussion thread at `docs/discussions/<YYYY-MM-DD>-<slug>.html` and open it. The html-discussion skill's `new-page.sh` handles date prefixing automatically.
+**Mode 2 - topic slug provided:** scaffold a new discussion thread at `docs/discussions/<YYYY-MM-DD>-<slug>.html` and open it. The html-discussion skill's `new-page.sh` handles date prefixing automatically.
 
 ```
 .claude/skills/html-discussion/bin/new-page.sh "$ARGUMENTS"
@@ -27,9 +27,9 @@ Capture the printed slug (the line beginning `Slug for subsequent commands:`). T
 open docs/discussions/<that-slug>.html
 ```
 
-Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in browser. Manifest initialized with `status: \"draft\"`. Tell me what you want to think through — I'll add sections as we go using the html-discussion skill (add-section.sh, render.sh, move.sh). When the discussion's decisions crystallize, run `/crystallize docs/discussions/<slug>.html` to sync the catalog (and flip the manifest to `active`), then dispatch implementation with your project's workflow (e.g., the ping-pong skill from this pack). When the work ships, run `/discussion ship <slug>` to flip the manifest to `shipped` and stamp the commit."
+Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in browser. Manifest initialized with `status: \"draft\"`. Tell me what you want to think through - I'll add sections as we go using the html-discussion skill (add-section.sh, render.sh, move.sh). When the discussion's decisions crystallize, run `/crystallize docs/discussions/<slug>.html` to sync the catalog (and flip the manifest to `active`), then dispatch implementation with your project's workflow (e.g., the ping-pong skill from this pack). When the work ships, run `/discussion ship <slug>` to flip the manifest to `shipped` and stamp the commit."
 
-**Mode 3 — `ship <slug>` (the work shipped):** flip the manifest to `status: "shipped"`, stamp `shipped_at` + `shipped_commit` from `git rev-parse HEAD`, append a merged-banner to the HTML if absent, and rebuild INDEX. Tags on features (`@scope:<slug>`) stay in place as permanent provenance.
+**Mode 3 - `ship <slug>` (the work shipped):** flip the manifest to `status: "shipped"`, stamp `shipped_at` + `shipped_commit` from `git rev-parse HEAD`, append a merged-banner to the HTML if absent, and rebuild INDEX. Tags on features (`@scope:<slug>`) stay in place as permanent provenance.
 
 `$ARGUMENTS` for this mode is the literal string `ship <slug>`. Parse it: if the first whitespace-separated word is `ship`, take the remainder as the slug.
 
@@ -37,9 +37,9 @@ Then say: "New thread scaffolded at `docs/discussions/<slug>.html` and opened in
 .claude/skills/html-discussion/bin/ship-page.sh "<slug>"
 ```
 
-The script is idempotent — re-running on an already-shipped slug warns and exits 0. Optional flags (rarely needed): `--commit <sha>` to override HEAD, `--no-banner` to skip the visual marker, `--no-rebuild` to skip the INDEX regeneration.
+The script is idempotent - re-running on an already-shipped slug warns and exits 0. Optional flags (rarely needed): `--commit <sha>` to override HEAD, `--no-banner` to skip the visual marker, `--no-rebuild` to skip the INDEX regeneration.
 
-Then say: "`<slug>` is shipped. Manifest stamped with date + commit, banner appended, INDEX rebuilt (if the project has an INDEX builder). Verify at `open docs/discussions/INDEX.html` — should be in the **Shipped** section now. `@scope:<slug>` tags on features stayed in place for future revalidation via your project's test runner filtered by the tag."
+Then say: "`<slug>` is shipped. Manifest stamped with date + commit, banner appended, INDEX rebuilt (if the project has an INDEX builder). Verify at `open docs/discussions/INDEX.html` - should be in the **Shipped** section now. `@scope:<slug>` tags on features stayed in place for future revalidation via your project's test runner filtered by the tag."
 
 ## Conflict handling
 
@@ -50,8 +50,8 @@ If `$ARGUMENTS` is provided AND a file at `docs/discussions/$(date +%Y-%m-%d)-<s
 
 ## Don't
 
-- Don't add sections to the new doc on creation — that happens through conversation, driven by the user's intent.
-- Don't run custom traceability build scripts (e.g., `python3 scripts/traceability/build.py`) for scaffolding (Mode 2) — `/crystallize` (and `ship` Mode 3) handles that when needed. A fresh draft has nothing to show in INDEX yet, which is fine.
+- Don't add sections to the new doc on creation - that happens through conversation, driven by the user's intent.
+- Don't run custom traceability build scripts (e.g., `python3 scripts/traceability/build.py`) for scaffolding (Mode 2) - `/crystallize` (and `ship` Mode 3) handles that when needed. A fresh draft has nothing to show in INDEX yet, which is fine.
 - Don't suggest theme choice unless the user asks; default `warm-paper` matches the existing threads.
-- Don't strip `@scope:<slug>` tags from features during ship — they stay forever as provenance. The ship script honors this; don't override it.
-- Don't manually edit the manifest fields that `ship-page.sh` writes (`status`, `shipped_at`, `shipped_commit`). Use the script — it's idempotent and writes the canonical shape.
+- Don't strip `@scope:<slug>` tags from features during ship - they stay forever as provenance. The ship script honors this; don't override it.
+- Don't manually edit the manifest fields that `ship-page.sh` writes (`status`, `shipped_at`, `shipped_commit`). Use the script - it's idempotent and writes the canonical shape.

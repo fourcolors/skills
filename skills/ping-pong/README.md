@@ -27,7 +27,7 @@ npx skills add fourcolors/skills --skill ping-pong -g
 npx skills add fourcolors/skills --skill subagent-memory -a claude-code
 ```
 
-Without it the agents still work — they just lose the structured memory discipline.
+Without it the agents still work - they just lose the structured memory discipline.
 
 ---
 
@@ -55,8 +55,8 @@ cp ~/.claude/skills/ping-pong/agents/*.md ~/.claude/agents/
 
 ## Configuration Notes
 
-- **Model**: the agents ship with `model: inherit`, so each spawn follows whatever model your session is running — no surprise cost pinning. If you want maximum-strength specs or audits regardless of session model, edit the copied agent files in `.claude/agents/` and pin (e.g. `model: opus`) per role.
-- **Agent teams** (pair messaging between ping and pong) is an experimental Claude Code feature gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Without it, the workflow still runs — the lead mediates questions instead of the pair messaging directly, or you can use solo-lead mode.
+- **Model**: the agents ship with `model: inherit`, so each spawn follows whatever model your session is running - no surprise cost pinning. If you want maximum-strength specs or audits regardless of session model, edit the copied agent files in `.claude/agents/` and pin (e.g. `model: opus`) per role.
+- **Agent teams** (pair messaging between ping and pong) is an experimental Claude Code feature gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Without it, the workflow still runs - the lead mediates questions instead of the pair messaging directly, or you can use solo-lead mode.
 - **Cross-model audits** (`consult` / `rotate` / `panel` modes) need at least one **peer auditor**. Declare peers in your project's `CLAUDE.md` or `AGENTS.md` under a `## Ping-pong audit peers` heading, one line each, with a slug, either an `agent:` subagent type or a `run:` shell command (`{brief}` is substituted with the audit brief), and the model family:
 
   ```
@@ -76,7 +76,7 @@ cp ~/.claude/skills/ping-pong/agents/*.md ~/.claude/agents/
 ping-pong/
 ├── SKILL.md            Orchestrator playbook (loaded when the skill triggers)
 ├── README.md           You are here
-├── agents/             Subagent definitions — copy these to .claude/agents/
+├── agents/             Subagent definitions - copy these to .claude/agents/
 │   ├── pp-ping.md
 │   ├── pp-pong.md
 │   └── pp-auditor.md
