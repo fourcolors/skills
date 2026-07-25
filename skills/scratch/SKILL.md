@@ -20,11 +20,11 @@ Use `.scratch/` for temporary, project-local work that is useful during developm
 
 ## Rules
 
-1. **Idempotent by default** — scripts should be safe to rerun.
-2. **Clean on green** — delete one-off scripts after they succeed, unless the output is useful evidence.
-3. **Keep failed evidence while debugging** — failed scripts/logs can stay until the issue is resolved.
-4. **Promote reused work** — if a script or artifact becomes useful twice, move it to `bin/`, `scripts/`, `docs/`, tests, or a real module.
-5. **No secrets** — never put `.env`, credentials, tokens, private keys, or customer data in `.scratch/`.
+1. **Idempotent by default** - scripts should be safe to rerun.
+2. **Clean on green** - delete one-off scripts after they succeed, unless the output is useful evidence.
+3. **Keep failed evidence while debugging** - failed scripts/logs can stay until the issue is resolved.
+4. **Promote reused work** - if a script or artifact becomes useful twice, move it to `bin/`, `scripts/`, `docs/`, tests, or a real module.
+5. **No secrets** - never put `.env`, credentials, tokens, private keys, or customer data in `.scratch/`.
 
 ## How to use it
 

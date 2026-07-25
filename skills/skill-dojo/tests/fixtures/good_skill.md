@@ -28,6 +28,6 @@ description: Use when testing the parser
 
 ## Skill
 
-> Lever — reflector mutates freely.
+> Lever - reflector mutates freely.
 
 The body of the skill goes here.
