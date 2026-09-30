@@ -162,7 +162,7 @@ ${b.map(scenarioBlock).join('\n\n')}
 The batch testCmd is "${batchTestCmd(b)}"; confirm or correct it against the real runner and return the authoritative testCmd. Run it once BEFORE implementing and record its exit code as redExitCode and its output as redEvidence; a block that passes before you implement is a broken test unless alreadyWired explains it, in which case drop that block and say so.
 THEN implement only inside ${batchOwned(b).join(', ')}. Cap diagnosis at 2 falsified hypotheses per scenario.
 Before claiming green you MUST run your authoritative testCmd and the project's typecheck once each.
-${gap ? `A previous audit found the tests missed intent: ${JSON.stringify(gap)}. Fix only the block(s) named and whatever code that requires; keep everything else.` : ''}
+${gap ? `A previous audit found open blockers: ${JSON.stringify(gap)}. For any On task gap, fix only the test block(s) named and whatever code that requires; for every other named gap, fix the code; keep everything else.` : ''}
 Return every field: committedSha, alreadyWired, testPath, testCmd, redExitCode, redEvidence, status 'green' with files (every path you changed, tests included), exitCode 0 and the passing output as greenEvidence; or status 'blocked' with a reason, the exit code you observed and the output as greenEvidence.`
 
 const implPrompt = (b, spec, failedAxes, round) => `${anchor}\n${FACTS}
@@ -220,6 +220,11 @@ const BLOCKING = ['On task', 'Correct']
 const BACKSTOP_FIX_ROUNDS = 5
 const ROUNDS = Math.min(goal.timeBoundRounds, BACKSTOP_FIX_ROUNDS + 1)
 const ruleLevelOf = (axes) => (axes ?? []).filter(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))
+// Hygiene failures are open blockers too, so they count toward the progress rule like any other.
+// A lint agent that returned nothing is an infrastructure failure: it still blocks shipping, but it is not a code
+// blocker, so it never counts for or against progress.
+const withLint = (axes, lint) => !lint ? [...axes, { name: 'Right', pass: false, infra: true, reason: 'no lint verdict returned' }]
+  : lint.violations.length ? [...axes, { name: 'Right', pass: false, reason: `hygiene: ${JSON.stringify(lint.violations)}` }] : axes
 const shipped = []
 let pending = null
 const recordCommit = (r) => {
@@ -281,10 +286,10 @@ for (const b of batches) {
         lint = lintVerdict
         if (!re) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no re-check verdict returned' }]; continue }
         if (ruleLevelOf(re.axes).length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel: ruleLevelOf(re.axes), anchor }, shipped }
-        failedAxes = BLOCKING.map(name => re.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from re-check' }).filter(a => !a.pass)
+        failedAxes = withLint(BLOCKING.map(name => re.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from re-check' }).filter(a => !a.pass), lint)
         // Progress rule: a fix round must close more than it opens and must not reopen anything already closed.
         const prev = history.at(-1) ?? []
-        const open = failedAxes.map(a => a.name)
+        const open = failedAxes.filter(a => !a.infra).map(a => a.name)
         prev.filter(n => !open.includes(n)).forEach(n => everClosed.add(n))
         history.push(open)
         const reopened = open.filter(n => everClosed.has(n) && prev.every(p => p !== n))
@@ -296,17 +301,15 @@ for (const b of batches) {
           () => agent(auditPrompt(b, spec, impl, mode), { phase: 'Audit', schema: VERDICT, ...TIER.reasoning, effort: 'medium' }),
           () => agent(lintPrompt(b, spec, null), { phase: 'Lint', schema: LINT, ...TIER.standard }),
         ])
-        verdict = auditVerdict; lint = lintVerdict; audited = true
+        verdict = auditVerdict; lint = lintVerdict; audited = !!verdict   // a missing verdict is not an audit: the next round audits in full
         if (!verdict) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no audit verdict returned' }]; continue }
         // Rule-level findings primitive: a RULE-LEVEL reason on ANY axis, blocking or advisory, stops the batch for a ruling.
         if (ruleLevelOf(verdict.axes).length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel: ruleLevelOf(verdict.axes), anchor }, shipped }
         // Blocking is decided by axis NAME and absent axes fail closed; advisory never blocks.
-        failedAxes = BLOCKING.map(name => verdict.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from verdict' }).filter(a => !a.pass)
-        history.push(failedAxes.map(a => a.name))
+        failedAxes = withLint(BLOCKING.map(name => verdict.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from verdict' }).filter(a => !a.pass), lint)
+        history.push(failedAxes.filter(a => !a.infra).map(a => a.name))
       }
       if (!failedAxes.length) {
-        if (!lint) { failedAxes = [{ name: 'Right', pass: false, reason: 'no lint verdict returned' }]; continue }
-        if (lint.violations.length) { failedAxes = [{ name: 'Right', pass: false, reason: `hygiene: ${JSON.stringify(lint.violations)}` }]; continue }
         pending = { name: batchName(b), paths: uniq([...batchOwned(b), b[0].testPath]), verdict }   // exit invariant: the next navigator commits it
         done = true
         continue
@@ -325,7 +328,7 @@ for (const b of batches) {
       if (mode === 'solo') {
         // The builder owns both sides: it fixes the named tests and whatever code that
         // needs, and its returned impl seeds the next round (no separate driver call).
-        const again = await agent(soloPrompt(b, null, specGap), { phase: 'Build', schema: SOLO, ...TIER.standard })
+        const again = await agent(soloPrompt(b, null, failedAxes), { phase: 'Build', schema: SOLO, ...TIER.standard })
         if (!again) return { escalate: { batch: batchName(b), reason: 'no re-spec after On-task failure', failedAxes, anchor }, shipped }
         ;({ spec, impl: seeded } = splitSolo(again))
       } else {

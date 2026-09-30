@@ -107,15 +107,16 @@ while (true) {
       () => agent(prior ? recheckPrompt(batch, spec, prior) : auditPrompt(batch, spec, impl), { phase: 'Audit', schema: VERDICT, effort: prior ? 'low' : 'medium' }),
       () => agent(lintPrompt(batch, spec, prior), { phase: 'Lint', schema: LINT }),
     ])
-    if (!prior) { verdict = v; audited = true }
+    if (!prior) { verdict = v; audited = !!v }                                         // a missing verdict is not an audit
     if (ruleLevel(v?.axes)) return { stopped: { batch, reason: 'rule-level finding: rule it into the goal, then relaunch', axes: v.axes } }
     failedAxes = blocking().map(n => v?.axes.find(a => a.name === n) ?? { name: n, pass: false, reason: 'axis missing' }).filter(a => !a.pass)
-    if (!failedAxes.length && lint?.violations.length) failedAxes = [{ name: 'Right', pass: false, reason: JSON.stringify(lint.violations) }]
+    if (!lint || lint.violations.length) failedAxes.push({ name: 'Right', pass: false, infra: !lint, reason: lint ? JSON.stringify(lint.violations) : 'no lint verdict' })   // hygiene counts toward progress; a missing lint verdict blocks but does not count
     if (prior) {                                                                      // progress rule: fewer open blockers than the round before, none reopened
-      const open = failedAxes.map(a => a.name)
-      prior.filter(a => !open.includes(a.name)).forEach(a => everClosed.add(a.name))
+      const counted = (axes) => axes.filter(a => !a.infra)
+      const open = counted(failedAxes).map(a => a.name)
+      counted(prior).filter(a => !open.includes(a.name)).forEach(a => everClosed.add(a.name))
       const reopened = open.filter(n => everClosed.has(n) && !prior.some(a => a.name === n))
-      if (open.length && (open.length >= prior.length || reopened.length)) return { escalate: { batch, failedAxes, level, next: 'no progress this round: a human decides with the evidence' } }
+      if (open.length && (open.length >= counted(prior).length || reopened.length)) return { escalate: { batch, failedAxes, level, next: 'no progress this round: a human decides with the evidence' } }
       if (open.some(n => prior.some(a => a.name === n)) && level < 3) level++          // a surviving blocker moves the next check one level up
     }
   }
