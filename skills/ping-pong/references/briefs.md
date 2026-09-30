@@ -101,13 +101,13 @@ that emits a PER-AXIS verdict (not a single overall PASS/FAIL):
 
 - On task:    PASS | FAIL - <reason; cite GOAL.md if relevant>
 - Correct:    PASS | FAIL - <test exit code, sibling tests, claim match>
-- Right:      PASS | FAIL - <hygiene findings or "clean">
-- Smart:      PASS | FAIL - <concerns or "approach is appropriate">
+- Right:      PASS | FAIL at panel, PASS | ADVISORY below it - <hygiene findings or "clean">
+- Smart:      PASS | FAIL at panel, PASS | ADVISORY below it - <concerns or "approach is appropriate">
 - Extra mile: PASS | ADVISORY - <missed sibling work or "none obvious">
 - Concerns addressed (DONE_WITH_CONCERNS only): for each pong concern, resolved/open + reasoning
 - LLM compliance verified (if applicable)
 - Audit sha: <git rev-parse HEAD>
-- Overall: PASS  (all four blocking axes PASS; list advisory findings)
+- Overall: PASS  (every axis that blocks at this auditor_mode PASSes; list advisory findings)
          | FAIL (any blocking axis fails - lead routes to ping or pong by the failed axis)
 
 For any mode other than home-only, ALSO write your independent verdict to the

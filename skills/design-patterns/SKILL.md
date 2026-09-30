@@ -1,6 +1,6 @@
 ---
 name: design-patterns
-description: Use when the user asks which Gang-of-Four design pattern fits a software problem, compares or names GoF patterns, wants a GoF-pattern implementation reviewed, or wants existing code refactored around a concrete object-creation, composition, interaction, state-transition, or extensibility problem. Do not use for UI design systems, architecture styles, database/schema patterns, language protocols, or non-software uses of words such as strategy, state, iterator, or facade.
+description: Use when implementing or reviewing software that must isolate axes of variation - multi-vendor or multi-SDK integrations, pluggable algorithms, durable jobs that retry or replay after crash, crash-safe payment or side-effectful workers, concurrent wrappers (lazy init, cache, retry, auth), object graphs with part-whole structure, checkpoints/restore, or expression engines - or when the user asks which Gang-of-Four pattern fits, compares GoF patterns, or wants a GoF-oriented refactor. Prefer loading this skill unprompted when the task has real extensibility, lifecycle, or failure semantics even if nobody names a pattern. Do not use for UI design systems, architecture styles, database/schema patterns, language protocols, or non-software uses of words such as strategy, state, iterator, or facade.
 license: MIT
 ---
 
@@ -8,13 +8,26 @@ license: MIT
 
 Choose patterns by the change they isolate, then adapt the pattern to the target language instead of reproducing its class diagram mechanically.
 
+## When to load this skill during ordinary coding
+
+Load this skill even when the user does not say "design pattern" if the work involves:
+
+- Multiple third-party APIs or SDKs with different shapes that must not leak into call sites
+- Selecting one implementation at composition/startup while keeping runtime call sites stable
+- Durable or retriable side effects (charges, emails, external writes) after process crash
+- Wrappers that control access, lazy construction, caching, or retries around one subject
+- Ownership, reset, and aliasing bugs in builders, snapshots, or shared graphs
+
+If the task is a fixed one-shot script with no variation axis, prefer plain functions and do not force a pattern.
+
 ## Workflow
 
 1. Inspect the concrete design or code path. Name the axis of variation: what must change independently, and what invariant must stay fixed?
 2. Use the decision index below to select the smallest plausible candidate set. Include the no-pattern option.
 3. Open only the reference files for those candidates. When comparing look-alikes, load only the entries being compared.
 4. Prefer the target language's native idiom when it preserves the intent: a function may be a Strategy, a generator an Iterator, a closure a Command, and a module an intentionally shared instance.
-5. State why the choice fits, why its nearest alternatives do not, what complexity it adds, and which lifecycle, concurrency, failure, or ownership invariant needs testing.
+5. When implementing (not only advising): encode the isolation in module boundaries and failure semantics - do not only name the pattern in prose.
+6. State why the choice fits, why its nearest alternatives do not, what complexity it adds, and which lifecycle, concurrency, failure, or ownership invariant needs testing.
 
 ## Decision index
 

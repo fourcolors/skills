@@ -5,10 +5,13 @@ Any composed workflow can adopt one with its rules intact; the rules are the pri
 
 ## Goal anchor
 
-A short goal statement written before the first dispatch, with Specific, Measurable, Achievable, Relevant, and Time-bound sections.
+A short goal statement written before the first dispatch, with Specific, Measurable, Achievable, Relevant, and Time-bound sections, plus Open decisions and Risk.
 
 - Write the goal before any task is created; every agent reads it to detect drift.
-- Measurable states workflow-level completion checks, not per-task ones.
+- Measurable states workflow-level completion checks, not per-task ones, and it is the frozen acceptance list: reviewers judge against it plus security, and changing it is a logged decision, never a side effect of a review round.
+- Open decisions lists every unknown or unsettled design rule the work depends on; each is resolved and written into the goal before the first build dispatch, so no rule is ever settled by review ping-pong.
+- Resolve an unknown fact about the system with a thin spike, a design choice inside the goal's scope with one reasoning-tier design pass, and anything that changes product behavior or scope with the human, batching those questions.
+- Risk names the sensitive surfaces the work touches (see Review sizing); unresolved unknowns are the main source of risk, which is why they are resolved first rather than reviewed harder later.
 - Time-bound caps cycles or wall-clock; when exceeded, escalate with the current state.
 - Escalations cite the goal ("cannot satisfy Measurable check X because Y"), never just "stuck on task 3".
 
@@ -75,13 +78,65 @@ Stages declare abstract capability tiers; one config file binds tiers to models.
 - Switching providers is a one-line config edit with zero workflow changes.
 - In a composed Workflow script the binding point is a single tier map at the top of the script, spread into each agent call's options.
 
+## Speed: count hand-offs, not stages
+
+Wall-clock in a sequential build loop is set by the number of agent hand-offs per unit of work, because every hand-off pays a fresh spin-up plus at least one test run.
+Measured on 2026-09-03 over three runs of the Effect/WorkOS migration (sonnet workers, opus auditor): scout 0.8 min, navigator 2.2, driver 2.9, auditor 2.8, commit 0.4 per scenario, 1.8 driver rounds on average, about 12 wall-clock minutes per scenario; no single stage dominated.
+
+- Batch consecutive scenarios that share a test file (default two): one navigator writes every RED block, one driver makes them all green, one audit judges the batch; the fixed cost per scenario roughly halves.
+- Fold read-only pre-flight (the "already wired" scout) into the navigator's first step; a separate scout agent is a hop that returns a list the navigator would re-derive anyway.
+- Fold the commit of an audited batch into the next navigator's first step (or into the whole-PR verify for the last batch); no agent should exist only to run git commit.
+- Keep exactly one independent audit per batch; verify a fix round with the batch tests, typecheck and the hygiene critic, never with a second full audit (re-auditing after every small fix was two thirds of the per-scenario time).
+- Give the auditor a command budget (batch tests, typecheck, diff, each once) and move sibling or contract suites to a parallel fast-tier critic; the reasoning-tier time should go to reading the diff, not waiting on vitest.
+- If the whole-PR verify already runs every suite, the ship gate is review only; a test or lint gate stage would be the third run of the same commands.
+- Never resume a run into a guard it will trip: after a hand fix, a cached "round 0" driver prompt that says "if already green, report broken-spec" will do exactly that; commit the fix under the scenario name and relaunch on the remaining scenarios instead.
+- Keep slow or headless external models (a grok CLI call that took over 15 minutes) off the critical path; add them as an extra reviewer at the gate if a second opinion is wanted.
+- Default to a solo builder (tests first, then code, then one independent audit) and reserve the navigator/driver split for ambiguous or security-sensitive scenarios; the independence that pays is the auditor's, not the test-writer's (see the ping-pong baseline "Modes").
+
 ## Bounded loops
 
 Every retry loop has a hard cap and an explicit escalation threshold.
 
 - Cap diagnosis at 2 falsified hypotheses, then escalate with the evidence.
-- Escalate to the human at 3+ fruitless re-dispatches, a blown time-bound, or input proven wrong - and bias toward self-recovery before that.
+- Keep review-driven fix rounds going only while each round makes progress (see Review sizing); the first round without progress goes to the human with the evidence.
+- Backstop runaway loops at 5 fix rounds per unit of work; it is a guard against a loop that never stalls cleanly, not the normal stop.
+- Escalate to the human at a blown time-bound, input proven wrong, a round without progress, or the runaway backstop - and bias toward self-recovery before that.
 - Kill any command sitting at 0% CPU for more than ~3 minutes and treat it as a failure.
+
+## Review sizing: start small, escalate on evidence
+
+Review effort follows the evidence a unit of work produces, not a fixed ceremony: most work gets one reviewer, and the full panel is the top of a ladder, not the default.
+Measured on 2026-09-30 over two long runs that put a four-reviewer panel on every slice: every run ended with blockers still open, the same finding was often filed by two or three reviewers, one design rule was re-decided in four consecutive fix rounds, and file-size complaints a script could check were about a sixth of the findings.
+The same reviews also caught real security defects, so the fix is sizing and an exit, not less review.
+
+| Level | Reviewers | Starts here when |
+|---|---|---|
+| 1 | One reasoning-tier reviewer with a checklist | Default for every unit of work |
+| 2 | Level 1 plus one cross-model peer, each writing its verdict before reading the other's | The diff touches a sensitive surface: auth, secrets or credentials, network exposure, data isolation or PII, money, destructive data operations or migrations, model-facing prompts |
+| 3 | Full panel: every available independent reviewer, at least one of them cross-model, each writing before reading, with the confirmation rule (ping-pong's `panel`) | Only by escalation |
+
+- A fix round makes progress when it leaves fewer open blockers than the round before and reopens none that an earlier round closed; the first round that fails this stops fixing, and the open blockers go to the human with the round-by-round counts.
+- The runaway backstop is 5 fix rounds per unit of work, whatever the level; escalating a level never resets it.
+- The next check runs one level up when a blocking finding survives a fix round, when reviewers disagree on a blocker, or when a reviewer reports it could not judge with confidence; never step down within a unit of work.
+- Scope every review tightly: the reviewer reads the diff in scope and the goal's acceptance list, nothing else, and every blocking finding cites a concrete failure scenario.
+- Re-check a fix round cheaply: the batch tests and scripts first, plus an anchored re-read of only the findings it answers and the lines it changed when no test can show a finding closed; never a fresh full review.
+- A blocker survives a fix round when that re-check still fails it.
+- Run mechanical checks (lint, format, typecheck, file-size and line budgets) as scripts or a fast-tier hygiene critic, before or in parallel with the review; a failure blocks, and a reviewer never spends a finding on something a script can decide.
+- Merge duplicate findings from multiple reviewers before routing, so one defect costs one fix.
+- At levels 1 and 2 only on task (against the acceptance list), correct, and security block; hygiene is the scripts' job, and approach or style suggestions are advisory follow-ups.
+- At level 3 every axis blocks.
+- Findings that are real but outside the acceptance list and not security become follow-up issues, never another fix round.
+- A finding several reviewers agree on still blocks only if its axis blocks at the current level; agreement on an advisory axis makes a stronger follow-up, not a fix round.
+- When a sensitive surface cannot get its level 2 reviewer (no peer available), run level 1 and mark the unit of work as under-reviewed in the final report, so the human sees it.
+
+## Rule-level findings stop the loop
+
+A finding that says the spec, the acceptance list, or a design rule is itself wrong is not a code defect, and another fix round cannot resolve it.
+
+- Stop the fix loop for that unit of work the moment such a finding appears.
+- One reasoning-tier design pass decides the rule and writes the ruling into the goal's Open decisions, with the reason.
+- Send it to the human only when the ruling changes product behavior or scope, or the design pass is not confident; batch such questions rather than asking one at a time.
+- Rebuild once against the written ruling; never let reviewers settle the rule round by round.
 
 ## Durability
 

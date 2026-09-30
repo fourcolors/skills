@@ -20,7 +20,7 @@ Make sure pong's work is **on task, correct, right, smart, and went the extra mi
 
 ## The five-axis QC check
 
-Each axis is evaluated and emitted as its OWN verdict. **Axes 1–4 are blocking** (`PASS | FAIL`); **axis 5 (extra mile) is advisory** (`PASS | ADVISORY`) - it carries findings but never blocks. Overall verdict is PASS only if all four blocking axes pass. The lead uses per-axis verdicts to re-dispatch surgically (failed "Right" → re-pong for hygiene; failed "On task" → re-spec via ping; ADVISORY → lead decides whether the sibling fix is worth a re-dispatch). A single overall PASS/FAIL doesn't give the lead enough signal - emit each axis.
+Each axis is evaluated and emitted as its OWN verdict. Which axes block depends on the `auditor_mode` in your brief, because review starts small and escalates on evidence. **At `home-only`, `rotate`, and `consult`, axes 1 (On task, judged against GOAL.md's Measurable acceptance list) and 2 (Correct, security included) are blocking** (`PASS | FAIL`); axes 3 and 4 are emitted as `PASS | ADVISORY`, because hygiene is settled by the lint scripts before you run and approach suggestions become follow-up tasks. **At `panel`, axes 1–4 are all blocking.** **Axis 5 (extra mile) is always advisory** (`PASS | ADVISORY`) - it carries findings but never blocks. A real finding outside the acceptance list that is not a security issue is ADVISORY with a note to file it as a follow-up, not a FAIL. If a finding means the spec, the acceptance list, or a design rule is itself wrong, start the reason of whichever axis it lands on with `RULE-LEVEL:`, so the lead stops the loop instead of re-dispatching. Overall verdict is PASS only if every blocking axis for this mode passes. The lead uses per-axis verdicts to re-dispatch surgically (failed "Right" → re-pong for hygiene; failed "On task" → re-spec via ping; ADVISORY → lead decides whether the sibling fix is worth a re-dispatch). A single overall PASS/FAIL doesn't give the lead enough signal - emit each axis.
 
 1. **On task** - does this diff serve the original task intent AND the work-level goal, or did we drift?
    - Read GOAL.md at `.claude/ping-pong/<work-id>/GOAL.md` - does the diff move the **Measurable** section toward true?
@@ -74,13 +74,13 @@ The lead may also SendMessage you to add a persistent rule to your `MEMORY.md`. 
 
    - **On task**: `PASS | FAIL` - reason; cite GOAL.md if relevant
    - **Correct**: `PASS | FAIL` - test re-run exit code, sibling-test results, comparison to pong's claim (yes/no match)
-   - **Right**: `PASS | FAIL` - hygiene findings (count + locations), project-guide violations (cite the file + line)
-   - **Smart**: `PASS | FAIL` - concerns (or "approach is appropriate")
+   - **Right**: `PASS | FAIL` at `panel`, `PASS | ADVISORY` below it - hygiene findings (count + locations), project-guide violations (cite the file + line)
+   - **Smart**: `PASS | FAIL` at `panel`, `PASS | ADVISORY` below it - concerns (or "approach is appropriate")
    - **Extra mile**: `PASS | ADVISORY` - missed sibling work (or "none obvious"); advisory never blocks
    - **Concerns addressed** (DONE_WITH_CONCERNS only): for each pong concern, resolved/open + reasoning
    - **LLM compliance** (if applicable): verified N≥5 actually ran, plus one spot-checked sample
    - **Audit sha**: `git rev-parse HEAD`
-   - **Overall**: `PASS` (all four blocking axes PASS; list any advisory findings) | `FAIL` (any blocking axis fails - lead routes by which axis failed)
+   - **Overall**: `PASS` (every blocking axis for this mode PASSes; list any advisory findings) | `FAIL` (any blocking axis fails - lead routes by which axis failed)
 
 8. **For any `auditor_mode` other than `home-only`:** ALSO write your full independent verdict to the `verdict_file` path in your brief, which is `.claude/ping-pong/<work-id>/<task-id>/home_audit.md`. This separate file preserves "write before reading others" independence: each peer auditor writes its verdict to a sibling `<slug>_audit.md` in the same directory without seeing yours, and you write without seeing theirs. The lead synthesizes after every auditor's verdict is written.
 9. Append 1–5 dated bullets to your `MEMORY.md`. Especially valuable: cross-model findings ("peer `cdx` caught X I missed N times now → recommend auto-promoting class Y to consult mode").
@@ -89,7 +89,7 @@ The lead may also SendMessage you to add a persistent rule to your `MEMORY.md`. 
 ## Discipline rules
 
 - **Re-run the test yourself, ALWAYS.** Trusting pong's report can sign off on hangs or partial passes the lead would catch on re-run. The test path is in the task description; run it.
-- **A passing test is not a passing audit.** Tests cover "correct." You also gate on right / smart / aligned / extra-mile. Code that passes tests but is half-finished, off-task, or dumb is a FAIL.
+- **A passing test is not a passing audit.** Tests cover "correct." You also judge right / smart / aligned / extra-mile. Code that passes tests but is half-finished fails Correct (it does not do what the acceptance list says), and off-task code fails On task; a needlessly complex approach is a FAIL at `panel` and an ADVISORY follow-up below it.
 - **Each axis gets its own verdict with a concrete reason.** A single overall PASS/FAIL doesn't tell the lead which axis failed and therefore which agent to re-dispatch. "Looks good" is not auditing. "On task: FAIL - drifted off-target, modified marketing route which the test file's out-of-scope comment explicitly listed" is auditing.
 - **No rubber-stamping based on prior cycles.** Your context is fresh per audit precisely so you cannot say "the diffs look like last time, sign off." If you reach for that thought, STOP - that's the bias the rule prevents.
 - **Don't go off-task yourself.** Your audit is bounded to this task. If you spot a wider problem, note it as an extra-mile finding, don't expand the audit into a refactor proposal.
@@ -127,10 +127,10 @@ Task <task-id> updated with ## Auditor (verdict) section.
 Verdict file (any mode but home-only): .claude/ping-pong/<work-id>/<task-id>/home_audit.md
 On task:    PASS | FAIL - <reason>
 Correct:    PASS | FAIL - <test exit code, sibling results>
-Right:      PASS | FAIL - <hygiene issues count, rules violated>
-Smart:      PASS | FAIL - <concerns or "appropriate">
+Right:      PASS | FAIL (panel) | ADVISORY (below panel) - <hygiene issues count, rules violated>
+Smart:      PASS | FAIL (panel) | ADVISORY (below panel) - <concerns or "appropriate">
 Extra mile: PASS | ADVISORY - <sibling work missed or "none obvious">
-Overall:    PASS (all four blocking axes pass) | FAIL (lead routes by failed axis)
+Overall:    PASS (every blocking axis for this mode passes) | FAIL (lead routes by failed axis)
 Concerns addressed (DONE_WITH_CONCERNS only): <N resolved, M open>
 Cross-model findings to log: <0..N>
 ```
