@@ -11,7 +11,7 @@
 // fix rounds with tests plus a fast critic, and gates with review only.
 //
 // Invoke as: Workflow({ scriptPath: <your adapted copy>, args: {
-//   goal:      { specific, measurable, achievable, relevant, timeBoundRounds, openDecisions: [] },   // openDecisions must be empty: resolve unknowns before building
+//   goal:      { specific, measurable, achievable, relevant, timeBoundRounds, openDecisions: [{ decision, ruling, reason }] },   // every entry needs a ruling: resolve unknowns before building
 //   reviewLevel: 1,            // review sizing primitive; this example implements level 1 (one auditor) only and refuses 2 or 3
 //   intent:    'rich statement of what the user set out to accomplish - decisions, tradeoffs, ruled-out approaches',
 //   branch:    'feature/...',   // non-default; the gate validates committed history here
@@ -61,10 +61,12 @@ if (Array.isArray(args?.scenarios)) {
   }
 }
 if (missing.length) return { refused: `Thin input - missing: ${missing.join(', ')}. What job statement should drive this run, and what are these facts?` }
-// Goal anchor primitive: an open decision is a rule reviewers would otherwise settle round by round, so refuse to build until it is resolved.
-const od = args.goal.openDecisions
-if (od != null && !Array.isArray(od)) return { refused: `goal.openDecisions must be an array of resolved-before-build items, got: ${JSON.stringify(od)}` }
-if (od?.length) return { refused: `Open decisions must be resolved before building: ${od.map(d => typeof d === 'string' ? d : JSON.stringify(d)).join('; ')}` }
+// Goal anchor primitive: an open decision is a rule reviewers would otherwise settle round by round, so refuse to build
+// while any entry lacks a ruling; resolved entries stay in the goal as the decision log every agent reads.
+const od = args.goal.openDecisions ?? []
+if (!Array.isArray(od)) return { refused: `goal.openDecisions must be an array of { decision, ruling, reason }, got: ${JSON.stringify(od)}` }
+const unresolved = od.filter(d => !d?.decision || !d?.ruling)
+if (unresolved.length) return { refused: `Open decisions must be resolved before building (each needs a decision and a ruling): ${unresolved.map(d => typeof d === 'string' ? d : JSON.stringify(d)).join('; ')}` }
 // Review sizing primitive: this example wires level 1 only. Level 2 (a cross-model peer) and level 3 (the full
 // panel) need a reviewer roster, so compose them per the ping-pong skill's audit modes instead of passing a number here.
 if (args.reviewLevel != null && args.reviewLevel !== 1) return { refused: `reviewLevel ${args.reviewLevel} is not implemented by this example (level 1 only); compose levels 2 and 3 per the ping-pong audit modes` }
@@ -94,7 +96,7 @@ const batchTestCmd = b => uniq(b.map(sc => sc.verify)).join(' && ')
 log(`${scenarios.length} scenarios in ${batches.length} batches of up to ${BATCH}; modes: ${batches.map(modeOf).join(', ')}`)
 
 // Goal anchor (primitive): all five SMART sections, read by every agent to detect drift.
-const anchor = `GOAL: ${goal.specific} | MEASURABLE: ${goal.measurable} | ACHIEVABLE: ${goal.achievable} | RELEVANT: ${goal.relevant} | TIME-BOUND: ${goal.timeBoundRounds} rounds per batch`
+const anchor = `GOAL: ${goal.specific} | MEASURABLE: ${goal.measurable} | ACHIEVABLE: ${goal.achievable} | RELEVANT: ${goal.relevant} | TIME-BOUND: ${goal.timeBoundRounds} rounds per batch${od.length ? ` | DECISIONS (settled, never re-decide): ${od.map(d => `${d.decision} -> ${d.ruling}${d.reason ? ` (${d.reason})` : ''}`).join('; ')}` : ''}`
 // Project facts every brief carries (resolved, never placeholders).
 const FACTS = `Working directory: ${repoDir} (branch ${branch}). Run every command from there.
 Contract tests that stay green after every batch: ${contractTests}
@@ -125,9 +127,20 @@ const VERDICT = { type: 'object', required: ['axes'], properties: { axes: { type
     blocking: { type: 'boolean' }, pass: { type: 'boolean' }, reason: { type: 'string' } } } } } }
 const LINT = { type: 'object', required: ['violations'], properties: { violations: { type: 'array', items: {
   type: 'object', required: ['file', 'rule', 'detail'], properties: { file: { type: 'string' }, rule: { type: 'string' }, detail: { type: 'string' } } } } } }
-const COMMIT = { type: 'object', required: ['sha'], properties: { sha: { type: 'string' } } }
-const MEASURE = { type: 'object', required: ['committedSha', 'results'], properties: { committedSha: { type: 'string' }, results: { type: 'array', items: {
-  type: 'object', required: ['cmd', 'exitCode', 'evidence'], properties: { cmd: { type: 'string' }, exitCode: { type: 'number' }, evidence: { type: 'string' } } } } } }
+const RESULTS = { type: 'array', items: {
+  type: 'object', required: ['cmd', 'exitCode', 'evidence'], properties: { cmd: { type: 'string' }, exitCode: { type: 'number' }, evidence: { type: 'string' } } } }
+const MEASURE = { type: 'object', required: ['committedSha', 'results'], properties: { committedSha: { type: 'string' }, results: RESULTS } }
+// A gate fix makes Verify's evidence stale, so it returns fresh results for every mandated command, never a bare sha.
+const FIXED = { type: 'object', required: ['sha', 'results'], properties: { sha: { type: 'string' }, results: RESULTS } }
+// Evidence over assertion: every mandated command appears exactly once, verbatim, and exits 0; a repeated, missing,
+// or unexpected command is a gap, not a pass.
+const measureGaps = (results) => !Array.isArray(results) ? ['no results returned'] : [
+  ...measureCommands.flatMap(cmd => {
+    const hits = results.filter(r => r.cmd === cmd)
+    return hits.length !== 1 ? [`${cmd}: ${hits.length} results`] : hits[0].exitCode !== 0 ? [`${cmd}: exit ${hits[0].exitCode}`] : []
+  }),
+  ...results.filter(r => !measureCommands.includes(r.cmd)).map(r => `unexpected command: ${r.cmd}`),
+]
 const GATE = { type: 'object', required: ['findings'], properties: { findings: { type: 'array', items: {
   type: 'object', required: ['id', 'action', 'detail'], properties: { id: { type: 'string' }, action: { enum: ['auto-fix', 'no-op', 'ask-user'] }, detail: { type: 'string' } } } } } }
 const SHIP = { type: 'object', required: ['prUrl', 'ci'], properties: { prUrl: { type: 'string' }, ci: { enum: ['checks-passed', 'failed'] } } }
@@ -360,8 +373,8 @@ ${commitStep(pending)}
 All ${scenarios.length} scenarios are then committed on ${branch}. Prove the Measurable condition: ${goal.measurable}
 Run verbatim and return each with its exit code and saved output: ${measureCommands.join('; ')}`, { phase: 'Verify', schema: MEASURE, ...TIER.standard })
 if (!recordCommit(measure)) return { escalate: { reason: 'Verify did not commit the last audited batch', measure, anchor }, shipped }
-const failedMandated = measure ? measure.results.filter(r => r.exitCode !== 0) : []
-if (!measure || measure.results.length < measureCommands.length || failedMandated.length) return { escalate: { reason: `cannot satisfy Measurable check: ${goal.measurable}`, failedMandated, anchor }, shipped }
+const measureGap = measure ? measureGaps(measure.results) : ['no Verify verdict']
+if (measureGap.length) return { escalate: { reason: `cannot satisfy Measurable check: ${goal.measurable}`, gaps: measureGap, anchor }, shipped }
 
 // Ship gate: review only (Verify already ran every suite); a fix re-enters the stage.
 phase('Gate')
@@ -381,8 +394,11 @@ Check correctness, scope against the out-of-scope list, and that every scenario 
   if (!fixable.length) break
   if (++attempts > 3) return { escalate: { stage: 'review', findings: fixable, anchor }, shipped }
   const fixed = await agent(`${FACTS}
-Fix exactly these review findings, nothing else, verify with ${measureCommands.join(' and ')}, and commit on ${branch} with a subject that describes the change itself (never "gate fix"). Return the sha: ${JSON.stringify(fixable)}`, { phase: 'Fix', schema: COMMIT, ...TIER.standard })
+Fix exactly these review findings, nothing else, and commit on ${branch} with a subject that describes the change itself (never "gate fix"): ${JSON.stringify(fixable)}
+Then run each of these verbatim on that commit and return each with its exact command, exit code and saved output, plus the sha: ${measureCommands.join('; ')}`, { phase: 'Fix', schema: FIXED, ...TIER.standard })
   if (!fixed?.sha) return { blocked: { stage: 'review', reason: 'fix agent returned no commit sha' }, shipped }
+  const fixGap = measureGaps(fixed.results)
+  if (fixGap.length) return { escalate: { stage: 'review', reason: `gate fix ${fixed.sha} is not verified: the Measurable check no longer holds`, gaps: fixGap, anchor }, shipped }
 }
 
 // Ship: push, PR against the base branch, CI to checks-passed; the human merges.
