@@ -75,6 +75,21 @@ Stages declare abstract capability tiers; one config file binds tiers to models.
 - Switching providers is a one-line config edit with zero workflow changes.
 - In a composed Workflow script the binding point is a single tier map at the top of the script, spread into each agent call's options.
 
+## Speed: count hand-offs, not stages
+
+Wall-clock in a sequential build loop is set by the number of agent hand-offs per unit of work, because every hand-off pays a fresh spin-up plus at least one test run.
+Measured on 2026-09-03 over three runs of the Effect/WorkOS migration (sonnet workers, opus auditor): scout 0.8 min, navigator 2.2, driver 2.9, auditor 2.8, commit 0.4 per scenario, 1.8 driver rounds on average, about 12 wall-clock minutes per scenario; no single stage dominated.
+
+- Batch consecutive scenarios that share a test file (default two): one navigator writes every RED block, one driver makes them all green, one audit judges the batch; the fixed cost per scenario roughly halves.
+- Fold read-only pre-flight (the "already wired" scout) into the navigator's first step; a separate scout agent is a hop that returns a list the navigator would re-derive anyway.
+- Fold the commit of an audited batch into the next navigator's first step (or into the whole-PR verify for the last batch); no agent should exist only to run git commit.
+- Keep exactly one independent audit per batch; verify a fix round with the batch tests, typecheck and the hygiene critic, never with a second full audit (re-auditing after every small fix was two thirds of the per-scenario time).
+- Give the auditor a command budget (batch tests, typecheck, diff, each once) and move sibling or contract suites to a parallel fast-tier critic; the reasoning-tier time should go to reading the diff, not waiting on vitest.
+- If the whole-PR verify already runs every suite, the ship gate is review only; a test or lint gate stage would be the third run of the same commands.
+- Never resume a run into a guard it will trip: after a hand fix, a cached "round 0" driver prompt that says "if already green, report broken-spec" will do exactly that; commit the fix under the scenario name and relaunch on the remaining scenarios instead.
+- Keep slow or headless external models (a grok CLI call that took over 15 minutes) off the critical path; add them as an extra reviewer at the gate if a second opinion is wanted.
+- Default to a solo builder (tests first, then code, then one independent audit) and reserve the navigator/driver split for ambiguous or security-sensitive scenarios; the independence that pays is the auditor's, not the test-writer's (see the ping-pong baseline "Modes").
+
 ## Bounded loops
 
 Every retry loop has a hard cap and an explicit escalation threshold.

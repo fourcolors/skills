@@ -35,10 +35,12 @@ You compose a concrete workflow by loading the relevant baselines and wiring the
 - The discipline never changes with ceremony: solo, subagent dispatch, and a full Workflow run all enforce the same invariants.
 - Every composed workflow gets a goal anchor and concrete done-when conditions before the first dispatch.
 - Declare capability tiers (fast/standard/reasoning/heavy) per stage, never concrete model names.
+- Count hand-offs before adding a stage: every extra agent in a sequential loop costs a spin-up plus a test run, so fold read-only or mechanical steps into a neighbor and keep independent judgment to one pass per unit of work.
 
 ## Worked example
 
-"Build feature X and ship it" composes as: goal anchor (primitive) -> ping-pong loop per BDD scenario (baseline) -> no-mistakes gate on the finished branch (baseline).
+"Build feature X and ship it" composes as: goal anchor (primitive) -> ping-pong loop per BATCH of BDD scenarios (baseline) -> review-only gate on the finished branch (baseline) -> ship.
+Read the "Speed: count hand-offs, not stages" primitive before composing a build loop: the measured cost is hand-offs per scenario, so batch scenarios that share a test file, fold scout and commit into the navigator, and audit once per batch.
 The seam is one deliberate exit invariant: the loop commits audited work on a non-default feature branch, which satisfies the gate's entry preconditions.
 [examples/build-and-ship.workflow.js](examples/build-and-ship.workflow.js) is this exact composition as a complete, copy-ready Workflow script; when the request matches this shape, start from it and adapt rather than re-derive the wiring.
 
