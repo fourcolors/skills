@@ -82,7 +82,7 @@ Work ID: <team-name slug>
 Goal file: .claude/ping-pong/<work-id>/GOAL.md  ← READ for "on task" + "extra mile"
 Test path: <from task description>
 Diff: <git rev-range>
-auditor_mode: <home-only | consult | rotate | panel>   (legacy `claude-solo` = `home-only`)
+auditor_mode: <home-only | consult | rotate | panel>   (anything else = home-only)
 auditor_slot: home
 verdict_file: .claude/ping-pong/<work-id>/<task-id>/home_audit.md
 Task-specific FAIL conditions (optional, lead-added):
