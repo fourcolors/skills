@@ -97,33 +97,32 @@ const blocking = () => level < 3 ? ['On task', 'Correct'] : ['On task', 'Correct
 const ruleLevel = (axes) => (axes ?? []).some(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))   // any axis, blocking or advisory
 const BACKSTOP = 5                                                                    // runaway guard, not the normal stop
 let verdict = null, failedAxes = null, audited = false, fixes = 0
+const everClosed = new Set()
 while (true) {
-  const impl = await agent(implPrompt(batch, spec, failedAxes), { phase: 'Build', schema: IMPL })
-  let v = null
+  const impl = await agent(implPrompt(batch, spec, failedAxes?.filter(a => a.name !== 'On task')), { phase: 'Build', schema: IMPL })   // the driver never gets the spec gap
   if (!impl || impl.status !== 'green') { failedAxes = [{ name: impl?.status === 'broken-spec' ? 'On task' : 'Correct', pass: false, reason: impl?.reason ?? 'no green claim' }] }
   else {
-    const fixRound = audited && failedAxes && !failedAxes.some(a => a.name === 'On task')   // after a re-spec (failedAxes null) the new spec gets a full audit
-    const prior = failedAxes
-    const [checked, lint] = await parallel([
-      () => agent(fixRound ? recheckPrompt(batch, spec, prior) : auditPrompt(batch, spec, impl), { phase: 'Audit', schema: VERDICT, effort: fixRound ? 'low' : 'medium' }),   // fix round: anchored re-read of the prior findings and the fix diff only
-      () => agent(lintPrompt(batch, spec, fixRound ? prior : null), { phase: 'Lint', schema: LINT }),
+    const prior = audited ? failedAxes : null                                         // every check after the one full audit is an anchored re-check, even after a re-spec
+    const [v, lint] = await parallel([
+      () => agent(prior ? recheckPrompt(batch, spec, prior) : auditPrompt(batch, spec, impl), { phase: 'Audit', schema: VERDICT, effort: prior ? 'low' : 'medium' }),
+      () => agent(lintPrompt(batch, spec, prior), { phase: 'Lint', schema: LINT }),
     ])
-    v = checked; if (!fixRound) { verdict = v; audited = true }
+    if (!prior) { verdict = v; audited = true }
     if (ruleLevel(v?.axes)) return { stopped: { batch, reason: 'rule-level finding: rule it into the goal, then relaunch', axes: v.axes } }
     failedAxes = blocking().map(n => v?.axes.find(a => a.name === n) ?? { name: n, pass: false, reason: 'axis missing' }).filter(a => !a.pass)
     if (!failedAxes.length && lint?.violations.length) failedAxes = [{ name: 'Right', pass: false, reason: JSON.stringify(lint.violations) }]
-    if (fixRound && failedAxes.length) {
-      const survived = failedAxes.filter(a => prior.some(p => p.name === a.name))
-      if (failedAxes.length >= prior.length) return   // progress rule: each round must close more than it opens { escalate: { batch, failedAxes, level, next: 'no progress this round: a human decides with the evidence' } }
-      if (survived.length && level < 3) level++                                       // a surviving blocker moves the next check one level up
+    if (prior) {                                                                      // progress rule: fewer open blockers than the round before, none reopened
+      const open = failedAxes.map(a => a.name)
+      prior.filter(a => !open.includes(a.name)).forEach(a => everClosed.add(a.name))
+      const reopened = open.filter(n => everClosed.has(n) && !prior.some(a => a.name === n))
+      if (open.length && (open.length >= prior.length || reopened.length)) return { escalate: { batch, failedAxes, level, next: 'no progress this round: a human decides with the evidence' } }
+      if (open.some(n => prior.some(a => a.name === n)) && level < 3) level++          // a surviving blocker moves the next check one level up
     }
   }
   if (!failedAxes.length) { pending = { name: batchName(batch), paths: ownedPaths(batch), verdict }; break }   // next navigator commits it
   if (++fixes > BACKSTOP) return { escalate: { batch, failedAxes, level, next: 'runaway backstop: a human decides with the evidence' } }
-  if (failedAxes.some(a => a.name === 'On task')) {
-    spec = (await agent(respecPrompt(batch, failedAxes), { phase: 'Spec', schema: SPEC })) ?? spec
-    failedAxes = null                                                                 // the old audit judged the old spec
-  }
+  const specGap = failedAxes.filter(a => a.name === 'On task')
+  if (specGap.length) spec = (await agent(respecPrompt(batch, specGap), { phase: 'Spec', schema: SPEC })) ?? spec   // the re-spec rides inside this round; other open blockers still go to the driver
 }
 ```
 

@@ -194,7 +194,7 @@ Emit one verdict per axis with a concrete reason: at this review level ${BLOCKIN
 // lines it changed, never a fresh full audit. This is what makes "a blocker survived the round" detectable.
 const recheckPrompt = (b, spec, prior) => `${anchor}\n${FACTS}
 You are the anchored re-checker for the batch "${batchName(b)}" after a fix round. The previous check failed on: ${JSON.stringify(prior)}.
-Run once: ${spec.testCmd}; then read git diff HEAD (the fix round's changes). Judge ONLY whether each named finding is now closed, and whether the fix diff itself adds a new blocker; review nothing else.
+Run once: ${spec.testCmd}; then read git diff HEAD (the batch is uncommitted until audited, so this is the whole batch; look only at the code the named findings concern and at what changed there). Judge ONLY whether each named finding is now closed, and whether the fix itself adds a new blocker; review nothing else. If a named finding was a spec gap, judge whether the rewritten tests now match the goal's MEASURABLE acceptance list.
 Emit one verdict per axis (On task, Correct, Right, Smart, Extra mile): an axis fails only if one of its named findings is still open or the fix diff adds a blocker on it, with the reason naming which. If the spec or a design rule is itself wrong, fail the axis it lands on with a reason starting RULE-LEVEL.`
 
 const lintPrompt = (b, spec, failedAxes) => `${anchor}\n${FACTS}
@@ -258,7 +258,7 @@ for (const b of batches) {
     phase('Build')
     let impl
     if (seeded) { impl = seeded; seeded = null }
-    else impl = await agent(implPrompt(b, spec, failedAxes, round), { phase: 'Build', schema: IMPL, ...TIER.standard })
+    else impl = await agent(implPrompt(b, spec, (f => f?.length ? f : null)(failedAxes?.filter(a => a.name !== 'On task')), round), { phase: 'Build', schema: IMPL, ...TIER.standard })   // the driver never gets the spec gap
     if (!impl) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no implementation returned' }]; continue }
     // Evidence over assertion: an incomplete green claim, or a later-round "broken-spec because it
     // already passes", is settled by an independent verifier that runs the test itself.
@@ -269,8 +269,8 @@ for (const b of batches) {
       else { verdict = null; failedAxes = [{ name: 'Correct', pass: false, reason: `independent verify: exit ${v ? v.exitCode : 'n/a'}` }]; continue }
     }
     if (impl.status === 'green' && impl.exitCode === 0 && impl.files.length) {
-      // One full audit per batch (invariant); a fix round is checked by tests plus the critic.
-      const fixRound = audited && !(failedAxes ?? []).some(a => a.name === 'On task')
+      // One full audit per batch (invariant): every later check, including the one after a re-spec, is an anchored re-check.
+      const fixRound = audited && Array.isArray(failedAxes)
       let lint
       if (fixRound) {
         const prior = failedAxes
@@ -343,7 +343,7 @@ for (const b of batches) {
           else return { escalate: { batch: batchName(b), reason: 'corrected spec passes but no implementation is in the tree - RED unproven', failedAxes, anchor }, shipped }
         }
       }
-      failedAxes = null
+      // Keep failedAxes: the re-check judges the rewritten spec, and any other open blocker still reaches the driver.
     }
   }
   if (!done) return { escalate: { batch: batchName(b), verdict, failedAxes, reviewLevel: REVIEW_LEVEL, history, next: 'runaway backstop or time-bound reached: a human decides with this evidence', anchor }, shipped }

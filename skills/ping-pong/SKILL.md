@@ -59,7 +59,7 @@ This split keeps the spec executable and committable; the cache exists only as l
 |---|---|---|---|
 | `pp-ping` | **Navigator** | Per-scenario spec writer. Discovers project test conventions and writes a failing test in-place. Test docstring carries the BDD scenario; assertions carry the acceptance criteria. The test IS the spec. | `.claude/agents/pp-ping.md` |
 | `pp-pong` | **Driver** | Implementer. Reads the failing test from the codebase, implements until it passes (RED→GREEN), writes evidence to the cycle cache. | `.claude/agents/pp-pong.md` |
-| `pp-auditor` | **Over-the-shoulder QC** | Reads the diff, reproduces the test, checks pong's work on four blocking axes - **on task, correct, right, smart** - plus an advisory **extra mile** axis. Asks "is this dumb?" - not just a test runner. | `.claude/agents/pp-auditor.md` |
+| `pp-auditor` | **Over-the-shoulder QC** | Reads the diff, reproduces the test, checks pong's work on four axes - **on task, correct, right, smart** - plus an advisory **extra mile** axis; which of the four block depends on the audit rung (see Audit modes). Asks "is this dumb?" - not just a test runner. | `.claude/agents/pp-auditor.md` |
 
 These exist as predefined agents - not inlined as on-the-fly prompts - so their `MEMORY.md` accumulates craft over time. After 50 audits the auditor knows which peer catches which class of bug; that compounding is the load-bearing reason to predefine.
 

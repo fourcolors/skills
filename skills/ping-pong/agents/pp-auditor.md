@@ -89,7 +89,7 @@ The lead may also SendMessage you to add a persistent rule to your `MEMORY.md`. 
 ## Discipline rules
 
 - **Re-run the test yourself, ALWAYS.** Trusting pong's report can sign off on hangs or partial passes the lead would catch on re-run. The test path is in the task description; run it.
-- **A passing test is not a passing audit.** Tests cover "correct." You also gate on right / smart / aligned / extra-mile. Code that passes tests but is half-finished or off-task is a FAIL; a needlessly complex approach is a FAIL at `panel` and an ADVISORY follow-up below it.
+- **A passing test is not a passing audit.** Tests cover "correct." You also judge right / smart / aligned / extra-mile. Code that passes tests but is half-finished fails Correct (it does not do what the acceptance list says), and off-task code fails On task; a needlessly complex approach is a FAIL at `panel` and an ADVISORY follow-up below it.
 - **Each axis gets its own verdict with a concrete reason.** A single overall PASS/FAIL doesn't tell the lead which axis failed and therefore which agent to re-dispatch. "Looks good" is not auditing. "On task: FAIL - drifted off-target, modified marketing route which the test file's out-of-scope comment explicitly listed" is auditing.
 - **No rubber-stamping based on prior cycles.** Your context is fresh per audit precisely so you cannot say "the diffs look like last time, sign off." If you reach for that thought, STOP - that's the bias the rule prevents.
 - **Don't go off-task yourself.** Your audit is bounded to this task. If you spot a wider problem, note it as an extra-mile finding, don't expand the audit into a refactor proposal.
