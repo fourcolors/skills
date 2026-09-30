@@ -43,7 +43,7 @@ Given solid-enough input, the loop self-recovers without you steering:
 - **Inner (per scenario):** bad impl → re-pong; bad spec → re-ping; drift caught by auditor → re-dispatch with the gap noted; pong blocked after 2 hypothesis attempts → escalate to lead
 - **Outer (across scenarios):** stuck scenario → skip, re-chunk, or escalate; plan-level problem → bubble to user
 
-You're the **floor**, not the steering wheel. The lead bubbles to you only when something genuinely can't recover: 3+ re-dispatches on a scenario with no progress, an ignored Monitor alert, or the input itself proves wrong. Otherwise the loop grinds through to completion.
+You're the **floor**, not the steering wheel. The lead bubbles to you only when something genuinely can't recover: blockers still open after the 2-fix-cycle budget (see Audit modes), an ignored Monitor alert, or the input itself proves wrong. Otherwise the loop grinds through to completion.
 
 ## Specs and code live in the codebase
 
@@ -151,15 +151,20 @@ The choice can be per-work-session OR per-scenario inside one session: you might
       Stamp `Reviewers: home + <slug list> (R of N reachable)` into the
       ## Auditor (verdict) section so the record shows how many eyes ran.
    e. ROUTE on the per-axis verdict:
-      - All four blocking axes PASS → mark task completed; if Extra mile is
-        ADVISORY, accept and log it, or re-dispatch pong for the sibling fix
-        (small, obvious scope only)
+      - Every axis that blocks at this auditor_mode PASSes → mark task
+        completed; log ADVISORY axes (Extra mile always; Right and Smart
+        below `panel`) and file real out-of-scope findings as follow-up
+        tasks, or re-dispatch pong for one small, obvious sibling fix
+      - Any axis reason starts with RULE-LEVEL → stop the scenario; resolve
+        the rule into GOAL.md's Open decisions, then re-spec once
       - Failed "On task" → re-dispatch pp-ping (the spec missed intent)
       - Failed "Correct" → re-dispatch pp-pong (test failed on auditor re-run,
                           or a sibling test broke)
-      - Failed "Right" → re-dispatch pp-pong (hygiene / half-finished work)
-      - Failed "Smart" → re-dispatch pp-pong with "simpler approach" prompt
-                        (escalate if architectural)
+      - Failed "Right" (blocking only at `panel`) → re-dispatch pp-pong
+      - Failed "Smart" (blocking only at `panel`) → re-dispatch pp-pong with
+                        "simpler approach" prompt (escalate if architectural)
+      - Every fix cycle counts against the 2-cycle budget; a blocker that
+        survives a cycle moves the next audit one rung up (Audit modes)
 6. (optional) Monitor for staleness / hangs / capacity - references/monitoring.md.
 7. Respawn dead/stale teammates as needed: Agent({subagent_type: "pp-ping",
    name: "ping-retry"}) gives a fresh inbox + fresh context.
@@ -251,16 +256,16 @@ Peers come from the audit roster the lead resolves once per work session at pre-
 | Mode | Auditors | Time | Default for |
 |---|---|---|---|
 | `home-only` | home auditor alone | ~30s | Every scenario unless promoted (the default) |
-| `consult` | home + every roster peer in parallel, lead synthesizes | ~1.5 min | LLM-compliance seams |
+| `consult` | home + every roster peer in parallel, lead synthesizes | ~1.5 min | LLM-compliance seams (a second rung, like `rotate`) |
 | `rotate` | home + one roster peer, round-robin per cycle | ~30–60s | Sensitive surfaces (the starting level, see auto-promotion) |
 | `panel` | home + every roster peer, each independent; lead applies the confirmation rule | ~3 min | Only by escalation (see below) |
 
 Audit starts small and escalates on evidence, never the other way round.
-`home-only`, then `rotate`, then `panel` are the three rungs of the review sizing ladder in the agent-workflows primitives.
+`home-only`, then `rotate` (or `consult` for LLM-compliance seams), then `panel` are the three rungs of the review sizing ladder in the agent-workflows primitives.
 Escalate a scenario one rung when a blocking finding survives a fix round, when auditors disagree on a blocker, or when the auditor says it could not judge with confidence; never step down within a scenario.
-At `home-only` and `rotate`, only On task (against GOAL.md's Measurable acceptance list) and Correct (security included) block; Right is the lint and hygiene scripts' job before the audit, and Smart findings and real findings outside the acceptance list become follow-up tasks, never another cycle.
-At `consult` and `panel`, all four blocking axes block, as written in pp-auditor.
-Cap review-driven fix cycles at 2 per scenario; after that, escalate a rung, and bubble to the user only when blockers remain at `panel`.
+At `home-only`, `rotate`, and `consult`, only On task (against GOAL.md's Measurable acceptance list) and Correct (security included) block; Right is the lint and hygiene scripts' job before the audit, and Smart findings and real findings outside the acceptance list become follow-up tasks, never another cycle.
+At `panel`, all four blocking axes block, as written in pp-auditor.
+A scenario gets at most 2 review-driven fix cycles in total, whatever the rung; escalating a rung does not reset the budget, and blockers still open after the second cycle bubble to the user with the evidence.
 A finding that says the spec, the acceptance list, or a design rule is itself wrong stops the scenario: the lead (or one reasoning-tier design pass) writes the ruling into GOAL.md's Open decisions, bubbles only if it changes product behavior or scope, and re-specs once against it.
 
 Times assume two reachable peers and scale with roster size.
@@ -273,7 +278,7 @@ An audit that runs is worth more than an audit that refuses over a name.
 **Roster size changes what these modes can promise.**
 With zero peers resolved, all four modes run `home-only` and the lead logs the degradation.
 With one peer, the rotation ring has a single entry and `consult` and `panel` dispatch that same peer every cycle.
-A finding is CONFIRMED when two or more auditors flag it independently, at any roster size, and the lead treats it as blocking whatever severity labels came attached.
+A finding is CONFIRMED when two or more auditors flag it independently, at any roster size, and the lead treats it as blocking whatever severity labels came attached, as long as its axis blocks at the current rung; on an advisory axis it becomes a follow-up task.
 A finding flagged by exactly one auditor is SINGLE-SOURCE and the lead adjudicates it on evidence rather than by vote.
 This replaces the old majority rule, which was undefined at two auditors and tied at four.
 
@@ -292,7 +297,7 @@ This replaces the old majority rule, which was undefined at two auditors and tie
 These mirror the typical bubble-up categories in a project's house rules, so a cross-model second opinion fires exactly where you'd want one anyway, and `panel` is reached only when that opinion and the home auditor cannot close a blocker.
 
 **When a promoted mode cannot be honored.**
-A mode the lead reached by auto-promotion degrades silently to `home-only` with one logged line, because blocking on the lead's own inference would stall autonomous execution.
+A mode the lead reached by auto-promotion degrades to `home-only` with one logged line, because blocking on the lead's own inference would stall autonomous execution; when the trigger was a sensitive surface, the lead also marks the scenario under-reviewed in its final report so the user sees it.
 A mode the user explicitly asked for bubbles once, states that no audit peers resolved, and hands the user a ready-to-paste `## Ping-pong audit peers` block for their CLAUDE.md.
 Either way the cycle proceeds; the lead never stalls waiting for a peer.
 
@@ -376,7 +381,7 @@ Three places hold cycle state, each suited to its data shape:
 - Auditor emitted a single overall PASS/FAIL instead of per-axis verdicts → reject, re-audit
 - Auditor's verdict doesn't address each pong concern when status was DONE_WITH_CONCERNS → re-audit
 - LLM seam scenario reporting single-shot pass → require N≥5 in the test itself
-- Same task re-dispatched 3+ times with no progress → escalate to user (cite GOAL.md)
+- Blockers still open after 2 fix cycles on a task → escalate to user with the evidence (cite GOAL.md)
 - Time-bound section of GOAL.md exceeded → escalate to user with current state
 - Monitor logs `ALERT:` for >10 min with no lead action → escalate
 - A `spec.md` or `evidence.md` or `audit.md` appears in the cache → STOP - that's the old shape. The spec is a real test in the codebase; evidence and verdict live in the task description.

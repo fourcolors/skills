@@ -62,7 +62,7 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
 - Evidence over assertion: every return is re-verified by an actor other than its author - the orchestrator directly, or the auditor's own re-run when the orchestrator cannot execute commands (a Workflow script) - and a claim without reproducible evidence is a rejected return. A green claim missing files, command, exit code or output goes to an independent verifier that runs the command itself, never back into a loop.
 - The auditor gets fresh context per audit and trusts nothing it did not reproduce itself.
 - A passing test is not a passing audit; alignment, hygiene, and approach gate independently.
-- Exactly one full audit per batch: a fix that answers a specific audit finding is re-checked by tests, typecheck and the hygiene critic, never by a second audit.
+- Exactly one full audit per batch: a fix that answers a specific audit finding is re-checked by tests, typecheck and the hygiene critic, plus an anchored re-read of that finding alone when no test can show it closed, never by a second full audit.
 - Stochastic seams (LLM output, flaky externals) encode at least 5 trials in the test via native parametrization; a single-shot pass is never a pass.
 - Cap diagnosis at 2 falsified hypotheses per failing cycle, then escalate with the evidence attached.
 - Fast tier does the work (navigator, driver, critic, verifier, ship); the reasoning tier judges (auditor, gate reviewer); the orchestrating session is the only place the top model is used.
@@ -78,8 +78,8 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
 | The spec, acceptance list, or a design rule is itself wrong | Stop the loop per the rule-level findings primitive: one design pass writes the ruling into the goal, then rebuild once; never route it to the driver |
 | Extra mile (advisory) | Orchestrator's choice: log it, or allow one small obvious sibling fix |
 
-After 2 fix rounds with a blocker still open, escalate one review level rather than starting a third round.
-Escalate to the human only when blockers remain at the top review level, a time-bound blows, or the input itself proves wrong.
+A blocker that survives a fix round moves the next check one review level up; the budget stays 2 fix rounds in total, never reset by escalating.
+Escalate to the human only when blockers remain after the second fix round, a time-bound blows, or the input itself proves wrong.
 After a hand fix of an escalation, commit it under the batch name and relaunch on the remaining scenarios; never resume into the cached round-0 driver, which will report the now-green spec as broken.
 
 ## Workflow skeleton (example - adapt freely)
@@ -111,11 +111,13 @@ for (let round = 0; round < 3; round++) {
     if (!failedAxes.length && lint?.violations.length) failedAxes = [{ name: 'Right', pass: false, reason: JSON.stringify(lint.violations) }]
   }
   if (!failedAxes.length) { pending = { name: batchName(batch), paths: ownedPaths(batch), verdict }; break }   // next navigator commits it
+  if (failedAxes.some(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))) return { stopped: { batch, reason: 'rule-level finding: rule it into the goal, then relaunch', failedAxes } }
   if (failedAxes.some(a => a.name === 'On task') && round < 2) {
     spec = (await agent(respecPrompt(batch, failedAxes), { phase: 'Spec', schema: SPEC })) ?? spec
     failedAxes = null                                                                 // the old audit judged the old spec
   }
 }
+if (failedAxes?.length) return { escalate: { batch, failedAxes, level, next: 'fix-round budget spent: a human decides' } }
 ```
 
 ## Composes with
