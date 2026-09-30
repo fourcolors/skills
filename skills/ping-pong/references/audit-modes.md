@@ -1,4 +1,4 @@
-# Audit modes — detail
+# Audit modes - detail
 
 The mode table and auto-promotion rules live in SKILL.md (the lead applies them at decomposition time). This file holds the run-time detail: how the lead resolves the audit roster, when an audit may be skipped, how independence works, and how the lead synthesizes disagreeing verdicts. Read it before running any `consult` / `rotate` / `panel` audit.
 
@@ -8,14 +8,14 @@ The mode table and auto-promotion rules live in SKILL.md (the lead applies them 
 
 - Diff is small (< ~50 lines).
 - Seam is pure scaffolding, config, boilerplate, version pinning, or generated code (no branching logic).
-- Test is contract-shaped — asserts on existence / version / path / signature, not behavior under load or edge cases.
+- Test is contract-shaped - asserts on existence / version / path / signature, not behavior under load or edge cases.
 - You're in **solo-lead mode** (single-session, not dispatching separate agents).
 
 `home-only` and solo-lead are independent axes: `home-only` says who audits, solo-lead says whether the lead dispatches subagents at all.
 
 The signal: a scenario where the audit's five-axis check has nothing to bite on because the diff has no judgment in it. Example: `uv init` + a one-line `__version__` assertion. The audit would PASS four blocking axes mechanically; running it is overhead.
 
-In **dispatched mode**, fire the audit even on trivial seams — pp-auditor's memory accumulates "what trivial really looks like" patterns over time. `consult` / `rotate` / `panel` modes **never** skip; those exist precisely because the seam is risky enough to warrant multiple eyes.
+In **dispatched mode**, fire the audit even on trivial seams - pp-auditor's memory accumulates "what trivial really looks like" patterns over time. `consult` / `rotate` / `panel` modes **never** skip; those exist precisely because the seam is risky enough to warrant multiple eyes.
 
 ## The audit roster (consult / rotate / panel)
 

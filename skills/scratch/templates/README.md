@@ -5,10 +5,10 @@ work-in-progress artifacts. This folder is gitignored.
 
 ## Rules
 
-· Idempotent — every script must be safe to re-run.
-· Clean on green — delete the script when it succeeds.
+· Idempotent - every script must be safe to re-run.
+· Clean on green - delete the script when it succeeds.
   Failed runs stay in place as debugging evidence.
-· Promote when reused — if a script earns a second use,
+· Promote when reused - if a script earns a second use,
   it earns a name in `bin/`, `scripts/`, or a real module.
 
 ## What's allowed here
@@ -20,6 +20,6 @@ work-in-progress artifacts. This folder is gitignored.
 
 ## What's NOT allowed
 
-· Committed code — promote to `bin/`, `scripts/`, or a real module
-· Decisions that should outlive the spike — write an ADR in `docs/adr/`
-· Secrets — `.env`, credentials, tokens
+· Committed code - promote to `bin/`, `scripts/`, or a real module
+· Decisions that should outlive the spike - write an ADR in `docs/adr/`
+· Secrets - `.env`, credentials, tokens

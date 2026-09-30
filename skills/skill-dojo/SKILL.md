@@ -12,11 +12,11 @@ license: MIT
 
 - **Metric:** mean pass rate across corpus
 - **Stop:** 10 iterations without improvement
-- **Baseline:** <unset — filled by first reflector run>
+- **Baseline:** <unset - filled by first reflector run>
 
 ### Measurements
 
-> The five self-measurements check for **trace markers** the dojo emits via Bash tool calls during the workflow (see the Skill body for the marker protocol). Tool-call args are reliably captured in the transcript, which makes the markers a robust grep target — unlike free-form prose, which the LLM rephrases.
+> The five self-measurements check for **trace markers** the dojo emits via Bash tool calls during the workflow (see the Skill body for the marker protocol). Tool-call args are reliably captured in the transcript, which makes the markers a robust grep target - unlike free-form prose, which the LLM rephrases.
 
 1. **`m1-completed-grill`** — `judge: code`
    - Question: *Did the dojo emit all seven step-complete trace markers?*
@@ -84,7 +84,7 @@ After completing each step and at every key event below, emit the corresponding 
 
     bash -c "echo dojo-trace:<event>"
 
-Tool-call arguments are captured reliably in the session transcript, which makes the markers a robust grep target for your self-contract. If you skip a marker, your own self-evaluation will count the step as not done. The marker is the spec — not your prose.
+Tool-call arguments are captured reliably in the session transcript, which makes the markers a robust grep target for your self-contract. If you skip a marker, your own self-evaluation will count the step as not done. The marker is the spec - not your prose.
 
 | Event | Marker to emit |
 |---|---|
@@ -100,7 +100,7 @@ Tool-call arguments are captured reliably in the session transcript, which makes
 | After `score_skill` returns, **if** baseline > 0 | `dojo-trace:baseline-positive` |
 | Step 7 complete (final hand-off message printed) | `dojo-trace:step-complete:7` AND `dojo-trace:handoff-complete` |
 
-### Step 1 — Triage location
+### Step 1 - Triage location
 
 Ask one question:
 
@@ -110,20 +110,20 @@ Lock the answer before moving on.
 
 Then emit: `bash -c "echo dojo-trace:step-complete:1"`
 
-### Step 2 — Grill on purpose
+### Step 2 - Grill on purpose
 
 Ask one at a time:
 
 1. What task does this skill exist to make better?
 2. When should it activate? Describe the trigger context in user words.
-3. What does "this skill worked" look like — for the user, in one sentence?
+3. What does "this skill worked" look like - for the user, in one sentence?
 4. What does it look like when it almost worked but failed in a way you would notice?
 
 Record each answer. Do not move on until you have all four.
 
 Then emit: `bash -c "echo dojo-trace:step-complete:2"`
 
-### Step 3 — Affirm objective
+### Step 3 - Affirm objective
 
 Confirm the defaults unless the user pushes back:
 
@@ -133,7 +133,7 @@ Confirm the defaults unless the user pushes back:
 
 Then emit: `bash -c "echo dojo-trace:step-complete:3"`
 
-### Step 4 — Define measurements (the heart)
+### Step 4 - Define measurements (the heart)
 
 For each measurement, run this sub-loop:
 
@@ -166,13 +166,13 @@ For each measurement, run this sub-loop:
 Enforce:
 - **Minimum 3, maximum 7 measurements.** If outside the range, push back.
 - **At most 2 LLM-judged measurements.** A third needs a one-line justification.
-- **Every measurement must be answerable from a session transcript alone.** No "did the deployment succeed in prod" — that requires running the world.
+- **Every measurement must be answerable from a session transcript alone.** No "did the deployment succeed in prod" - that requires running the world.
 
-**DSL growth rule.** If a user's check isn't expressible in the current JSON grammar, the fix is **one new combinator + one new test** in `judge_code.py` — never widen the runner to accept arbitrary code. This keeps the DSL named, reviewable, and bounded.
+**DSL growth rule.** If a user's check isn't expressible in the current JSON grammar, the fix is **one new combinator + one new test** in `judge_code.py` - never widen the runner to accept arbitrary code. This keeps the DSL named, reviewable, and bounded.
 
 Then emit: `bash -c "echo dojo-trace:step-complete:4"`
 
-### Step 5 — Confirm lever boundaries
+### Step 5 - Confirm lever boundaries
 
 State the defaults:
 
@@ -183,13 +183,13 @@ Most users accept these.
 
 Then emit: `bash -c "echo dojo-trace:step-complete:5"`
 
-### Step 6 — Synthesize the file
+### Step 6 - Synthesize the file
 
 1. Build a `Contract` object from the grill answers.
 2. Decide the target path:
    - User-level: `~/.claude/skills/<name>/SKILL.md`
    - Project-local: `<repo-root>/.claude/skills/<name>/SKILL.md`
-3. Call the writer via Python — easiest is a small inline script:
+3. Call the writer via Python - easiest is a small inline script:
 
        cd ~/.claude/skills/skill-dojo
        python -c "
@@ -215,7 +215,7 @@ Then emit: `bash -c "echo dojo-trace:step-complete:5"`
 
 Then emit: `bash -c "echo dojo-trace:step-complete:6"`
 
-### Step 7 — First run before handoff
+### Step 7 - First run before handoff
 
 **7a. Capture seed corpus.**
 
@@ -227,7 +227,7 @@ If the user accepts the auto-query:
 
     cd ~/.claude/skills/skill-dojo
     # If the target skill lives in a different project than the dojo, set
-    # CLAUDE_PROJECTS_DIR to that project's session-history dir — fetch_corpus
+    # CLAUDE_PROJECTS_DIR to that project's session-history dir - fetch_corpus
     # otherwise derives it from cwd and silently returns zero sessions.
     # e.g. CLAUDE_PROJECTS_DIR=~/.claude/projects/-Users-you-Projects-foo
     python -c "
@@ -291,7 +291,7 @@ Then emit BOTH:
 
 ### Notes for the sensei
 
-- **You are not the reflector.** Your job ends after the first-run handoff. Do not propose mutations to the lever during authoring — that's a separate skill's job.
-- **You eat your own dog food.** Your own `## Contract` block (above) is graded on every dojo session. If `m4-baseline-positive` ever fails, the grill ran but the seed corpus produced a zero score — usually because the user-authored measurements were untestable against the chosen transcripts, or the corpus was empty.
+- **You are not the reflector.** Your job ends after the first-run handoff. Do not propose mutations to the lever during authoring - that's a separate skill's job.
+- **You eat your own dog food.** Your own `## Contract` block (above) is graded on every dojo session. If `m4-baseline-positive` ever fails, the grill ran but the seed corpus produced a zero score - usually because the user-authored measurements were untestable against the chosen transcripts, or the corpus was empty.
 - **The contract is a promise.** Don't quietly skip a step. Each of the seven steps is checked by `m1-completed-grill` via its trace marker. No marker = step did not happen, full stop.
-- **The trace marker IS the spec.** Phrasing in prose ("step 1 done!") doesn't count — only the explicit `dojo-trace:*` Bash tool call does. The reason is robustness: the LLM rephrases prose; tool-call args are captured verbatim.
+- **The trace marker IS the spec.** Phrasing in prose ("step 1 done!") doesn't count - only the explicit `dojo-trace:*` Bash tool call does. The reason is robustness: the LLM rephrases prose; tool-call args are captured verbatim.
