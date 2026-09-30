@@ -11,7 +11,8 @@
 // fix rounds with tests plus a fast critic, and gates with review only.
 //
 // Invoke as: Workflow({ scriptPath: <your adapted copy>, args: {
-//   goal:      { specific, measurable, achievable, relevant, timeBoundRounds },
+//   goal:      { specific, measurable, achievable, relevant, timeBoundRounds, openDecisions: [] },   // openDecisions must be empty: resolve unknowns before building
+//   reviewLevel: 1,            // review sizing primitive: 1 default, 2 when the diff touches a sensitive surface; 3 (full panel) only by escalation
 //   intent:    'rich statement of what the user set out to accomplish - decisions, tradeoffs, ruled-out approaches',
 //   branch:    'feature/...',   // non-default; the gate validates committed history here
 //   baseBranch: 'main',
@@ -60,6 +61,9 @@ if (Array.isArray(args?.scenarios)) {
   }
 }
 if (missing.length) return { refused: `Thin input - missing: ${missing.join(', ')}. What job statement should drive this run, and what are these facts?` }
+// Goal anchor primitive: an open decision is a rule reviewers would otherwise settle round by round, so refuse to build until it is resolved.
+const openDecisions = Array.isArray(args.goal.openDecisions) ? args.goal.openDecisions : []
+if (openDecisions.length) return { refused: `Open decisions must be resolved before building: ${openDecisions.join('; ')}` }
 const { goal, intent, branch, baseBranch, repoDir, prId, prTitle, outOfScope, contractTests, measureCommands, scenarios } = args
 const hygieneRules = typeof args.hygieneRules === 'string' ? args.hygieneRules : 'none beyond the project lint'
 const BATCH = Number.isInteger(args.batchSize) && args.batchSize > 0 ? args.batchSize : 2
@@ -180,7 +184,7 @@ ${mode === 'solo' ? 'The SAME agent wrote the tests and the implementation. Read
 Command budget (run each EXACTLY ONCE, in this order, then judge from the output and the diff): (1) ${spec.testCmd}; (2) the project's typecheck; (3) git status --porcelain and git diff. Reading files is free; running suites again is not. The contract suites are run by a parallel critic, not by you.
 The driver's reported files (${(impl.files ?? []).join(', ')}) are a claim to check against the diff. Verify the diff stays inside ${batchOwned(b).join(', ')} and touches nothing out of scope; verify every Then clause of every scenario by reading the tests and the sources.
 ${b.map(scenarioBlock).join('\n\n')}
-Emit one verdict per axis with a concrete reason: On task, Correct, Right, Smart are blocking; Extra mile is advisory and short. A failing reason must name the scenario and the file.`
+Emit one verdict per axis with a concrete reason: at this review level ${BLOCKING.join(', ')} block (Correct includes security); judge On task only against the goal's MEASURABLE acceptance list; every other axis is advisory and short, and a real finding outside the acceptance list is reported as a follow-up, not a failure. A failing reason must name the scenario and the file.`
 
 const lintPrompt = (b, spec, failedAxes) => `${anchor}\n${FACTS}
 You are the hygiene critic for the batch "${batchName(b)}". First run, once: ${contractTests}; any failure is a violation with rule "contract-suite".
@@ -195,7 +199,12 @@ On failure return ok:false with the exact fix command, never a guess.`, { phase:
 if (!setup?.ok) return { blocked: { stage: 'setup', fix: setup?.fix ?? 'no setup verdict' } }
 
 // Ping-pong loop (baseline), one batch at a time; sequential agents share one working tree.
-const BLOCKING = ['On task', 'Correct', 'Right', 'Smart']
+// Review sizing primitive: at levels 1 and 2 only On task and Correct (security included) block; Right is the
+// critic's and scripts' job and Smart becomes a follow-up. Level 3 blocks on every axis.
+const REVIEW_LEVEL = [1, 2, 3].includes(args.reviewLevel) ? args.reviewLevel : 1
+const BLOCKING = REVIEW_LEVEL < 3 ? ['On task', 'Correct'] : ['On task', 'Correct', 'Right', 'Smart']
+// Bounded loops primitive: at most 2 fix rounds after the first build, whatever the goal allows.
+const ROUNDS = Math.min(goal.timeBoundRounds, 3)
 const shipped = []
 let pending = null
 const recordCommit = (r) => {
@@ -229,7 +238,7 @@ for (const b of batches) {
     if (!spec || spec.exitCode === 0) return { escalate: { batch: batchName(b), reason: 'no failing spec produced - RED unproven', anchor }, shipped }
   }
   let verdict = null, failedAxes = null, done = false, audited = false
-  for (let round = 0; round < goal.timeBoundRounds && !done; round++) {
+  for (let round = 0; round < ROUNDS && !done; round++) {
     phase('Build')
     let impl
     if (seeded) { impl = seeded; seeded = null }
@@ -276,7 +285,7 @@ for (const b of batches) {
     }
     // Failure routing: only a JUDGED On-task failure re-dispatches the navigator.
     const specGap = failedAxes.filter(a => a.name === 'On task' && a.reason !== 'axis missing from verdict')
-    if (specGap.length && round < goal.timeBoundRounds - 1) {
+    if (specGap.length && round < ROUNDS - 1) {
       if (mode === 'solo') {
         // The builder owns both sides: it fixes the named tests and whatever code that
         // needs, and its returned impl seeds the next round (no separate driver call).

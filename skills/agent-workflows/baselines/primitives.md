@@ -5,10 +5,12 @@ Any composed workflow can adopt one with its rules intact; the rules are the pri
 
 ## Goal anchor
 
-A short goal statement written before the first dispatch, with Specific, Measurable, Achievable, Relevant, and Time-bound sections.
+A short goal statement written before the first dispatch, with Specific, Measurable, Achievable, Relevant, and Time-bound sections, plus Open decisions and Risk.
 
 - Write the goal before any task is created; every agent reads it to detect drift.
-- Measurable states workflow-level completion checks, not per-task ones.
+- Measurable states workflow-level completion checks, not per-task ones, and it is the frozen acceptance list: reviewers judge against it plus security, and changing it is a logged decision, never a side effect of a review round.
+- Open decisions lists every unknown or unsettled design rule the work depends on; each is resolved (a thin spike, one reasoning-tier design pass, or the human) and written into the goal before the first build dispatch, so no rule is ever settled by review ping-pong.
+- Risk names the sensitive surfaces the work touches (see Review sizing); unresolved unknowns are the main source of risk, which is why they are resolved first rather than reviewed harder later.
 - Time-bound caps cycles or wall-clock; when exceeded, escalate with the current state.
 - Escalations cite the goal ("cannot satisfy Measurable check X because Y"), never just "stuck on task 3".
 
@@ -95,8 +97,39 @@ Measured on 2026-09-03 over three runs of the Effect/WorkOS migration (sonnet wo
 Every retry loop has a hard cap and an explicit escalation threshold.
 
 - Cap diagnosis at 2 falsified hypotheses, then escalate with the evidence.
-- Escalate to the human at 3+ fruitless re-dispatches, a blown time-bound, or input proven wrong - and bias toward self-recovery before that.
+- Cap review-driven fix rounds at 2 per unit of work (see Review sizing); after the cap, escalate the review level or the human, never start a third round.
+- Escalate to the human at a blown time-bound, input proven wrong, or blockers still open at the top review level - and bias toward self-recovery before that.
 - Kill any command sitting at 0% CPU for more than ~3 minutes and treat it as a failure.
+
+## Review sizing: start small, escalate on evidence
+
+Review effort follows the evidence a unit of work produces, not a fixed ceremony: most work gets one reviewer, and the full panel is the top of a ladder, not the default.
+Measured on 2026-09-30 over two long runs that put a four-reviewer panel on every slice: every run ended with blockers still open, the same finding was often filed by two or three reviewers, one design rule was re-decided in four consecutive fix rounds, and file-size complaints a script could check were about a sixth of the findings.
+The same reviews also caught real security defects, so the fix is sizing and an exit, not less review.
+
+| Level | Reviewers | Starts here when |
+|---|---|---|
+| 1 | One reasoning-tier reviewer with a checklist | Default for every unit of work |
+| 2 | Level 1 plus one cross-model peer, each writing its verdict before reading the other's | The diff touches a sensitive surface: auth, secrets or credentials, network exposure, data isolation or PII, money, destructive data operations or migrations, model-facing prompts |
+| 3 | Full panel: critic, auditor, cross-model reviewer, confirmation rule | Only by escalation |
+
+- Escalate one level when a blocking finding survives a fix round, when reviewers disagree on a blocker, or when a reviewer reports it could not judge with confidence; never step down within a unit of work.
+- Scope every review tightly: the reviewer reads the diff in scope and the goal's acceptance list, nothing else, and every blocking finding cites a concrete failure scenario.
+- Re-check a fix round only against the findings it answers and the lines it changed (anchored), never with a fresh full review.
+- Run mechanical checks (lint, format, typecheck, file-size and line budgets) as scripts before any reviewer runs; a script failure blocks, and a reviewer never spends a finding on something a script can decide.
+- Merge duplicate findings from multiple reviewers before routing, so one defect costs one fix.
+- At levels 1 and 2 only on task (against the acceptance list), correct, and security block; hygiene is the scripts' job, and approach or style suggestions are advisory follow-ups.
+- At level 3 every axis blocks.
+- Findings that are real but outside the acceptance list and not security become follow-up issues, never another fix round.
+
+## Rule-level findings stop the loop
+
+A finding that says the spec, the acceptance list, or a design rule is itself wrong is not a code defect, and another fix round cannot resolve it.
+
+- Stop the fix loop for that unit of work the moment such a finding appears.
+- One reasoning-tier design pass decides the rule and writes the ruling into the goal's Open decisions, with the reason.
+- Send it to the human only when the ruling changes product behavior or scope, or the design pass is not confident; batch such questions rather than asking one at a time.
+- Rebuild once against the written ruling; never let reviewers settle the rule round by round.
 
 ## Durability
 

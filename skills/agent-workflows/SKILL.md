@@ -14,7 +14,7 @@ You compose a concrete workflow by loading the relevant baselines and wiring the
 
 | File | Shape | Load when |
 |---|---|---|
-| [baselines/ping-pong.md](baselines/ping-pong.md) | Build loop: spec (failing test) -> implement -> independent audit | The workflow must produce verified code changes |
+| [baselines/ping-pong.md](baselines/ping-pong.md) | Build loop: spec (failing test) -> implement -> independent audit sized to risk | The workflow must produce verified code changes |
 | [baselines/no-mistakes.md](baselines/no-mistakes.md) | Ship gate: ordered validation pipeline before a push target | The workflow ends with committed work that must ship safely |
 | [baselines/primitives.md](baselines/primitives.md) | Cross-cutting parts to graft into any composition | Always skim; graft what the composition needs |
 
@@ -33,7 +33,8 @@ You compose a concrete workflow by loading the relevant baselines and wiring the
 - Invariants are non-negotiable; skeletons are examples - adapt structure freely, never the invariants.
 - Never merge roles a baseline separates for independence reasons (for example auditor and implementer).
 - The discipline never changes with ceremony: solo, subagent dispatch, and a full Workflow run all enforce the same invariants.
-- Every composed workflow gets a goal anchor and concrete done-when conditions before the first dispatch.
+- Every composed workflow gets a goal anchor and concrete done-when conditions before the first dispatch, and every open decision in it is resolved before the first build dispatch; a design rule is never left for reviewers to settle.
+- Size review with the review sizing primitive: one reviewer by default, a cross-model peer added for sensitive surfaces, the full panel only by escalation, at most 2 fix rounds, and out-of-scope findings filed as follow-ups; never put the full panel on every unit of work.
 - Declare capability tiers (fast/standard/reasoning/heavy) per stage, never concrete model names.
 - Count hand-offs before adding a stage: every extra agent in a sequential loop costs a spin-up plus a test run, so fold read-only or mechanical steps into a neighbor and keep independent judgment to one pass per unit of work.
 

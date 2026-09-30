@@ -18,7 +18,7 @@ Any workflow stage that must produce verified code changes, where a single agent
 |---|---|---|
 | Navigator (ping) | WHAT: commits the previous audited batch, scouts read-only for what already exists, writes one failing test per scenario of the batch as the executable spec | Forcing an implementation technique through the test |
 | Driver (pong) | HOW: implements the whole batch until every block passes | Modifying the test to make it pass |
-| Auditor | VERDICT: one per-axis judgment per batch from fresh context | Joining the pair's channel or negotiating the bar |
+| Auditor | VERDICT: one per-axis judgment per batch from fresh context, one reviewer by default and more only by the review sizing primitive's ladder | Joining the pair's channel or negotiating the bar |
 | Hygiene critic | Runs the sibling or contract suites and the project's lint rules in parallel with the audit; re-checks a fix round | Judging design or scope |
 
 ## Unit of work: the batch
@@ -47,7 +47,10 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
 - Spec handoff (RED): the navigator runs the batch test command once and proves it fails before handing off; a block that passes on arrival is a broken spec unless the navigator's scout step explains it as already wired, in which case the block is dropped and the drop is reported.
 - Implementation return (GREEN): the driver re-proves RED first, implements inside the union of the batch's owned files, then runs the batch command and typecheck verbatim and returns the exit code plus saved output as evidence.
 - Audit: the auditor runs the batch command, typecheck and the diff, each exactly once, checks the diff against the declared out-of-scope list, verifies every Then clause by reading, and emits one verdict per axis with a concrete reason that names the scenario and file.
-- Verdict axes: On task, Correct, Right (hygiene), and Smart (approach) are blocking; Extra mile is advisory and never blocks.
+- Verdict axes: which axes block follows the review level (see the review sizing primitive).
+  At levels 1 and 2, On task (against the goal's acceptance list) and Correct (security included) block, Right (hygiene) is settled by the hygiene critic and scripts before the audit, and Smart (approach) is advisory and becomes a follow-up.
+  At level 3, On task, Correct, Right, and Smart all block.
+  Extra mile is always advisory and never blocks.
 - Rounds: a round is one implementation return plus its check; the first check is the audit, later rounds are checked by the batch tests, typecheck and the hygiene critic; an On-task re-spec rides inside the round that exposed it, and the round cap counts build attempts.
 - Exit (composition glue): audited work is committed on the non-default feature branch by the next navigator's first step, or by the whole-PR verify for the last batch, with the batch name as the commit subject; a downstream ship gate validates committed history.
 
@@ -70,10 +73,13 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
 |---|---|
 | On task | Re-dispatch the navigator - the spec missed intent; fix only the named block, keep the others |
 | Correct or Right | Re-dispatch the driver with the gap noted; the fix round is checked by tests plus the critic |
-| Smart | Re-dispatch the driver with a simpler-approach prompt; escalate if the problem is architectural |
+| Smart (blocking at level 3 only) | Re-dispatch the driver with a simpler-approach prompt; escalate if the problem is architectural |
+| Smart or out-of-scope finding (levels 1 and 2) | File a follow-up issue; never a fix round |
+| The spec, acceptance list, or a design rule is itself wrong | Stop the loop per the rule-level findings primitive: one design pass writes the ruling into the goal, then rebuild once; never route it to the driver |
 | Extra mile (advisory) | Orchestrator's choice: log it, or allow one small obvious sibling fix |
 
-Escalate to the human only at 3+ fruitless rounds, a blown time-bound, or when the input itself proves wrong.
+After 2 fix rounds with a blocker still open, escalate one review level rather than starting a third round.
+Escalate to the human only when blockers remain at the top review level, a time-bound blows, or the input itself proves wrong.
 After a hand fix of an escalation, commit it under the batch name and relaunch on the remaining scenarios; never resume into the cached round-0 driver, which will report the now-green spec as broken.
 
 ## Workflow skeleton (example - adapt freely)
@@ -83,10 +89,11 @@ After a hand fix of an escalation, commit it under the batch name and relaunch o
 // SPEC returns {committedSha, alreadyWired, testPath, testCmd, exitCode, redEvidence};
 // IMPL returns {status, files, testCmd, exitCode, greenEvidence}; VERDICT returns {axes: [{name, blocking, pass, reason}]};
 // LINT returns {violations: [{file, rule, detail}]}.
+// `level` is the batch's review level from the review sizing primitive; escalating it after the round cap is the outer loop's job.
 let spec = await agent(specPrompt(batch, pending), { phase: 'Spec', schema: SPEC })   // commits `pending` first, scouts, writes RED blocks
 recordCommit(spec)                                                                    // pending batch is shipped only when a sha came back
 if (!spec || spec.exitCode === 0) return { escalate: { batch, reason: 'RED unproven' } }
-const BLOCKING = ['On task', 'Correct', 'Right', 'Smart']
+const BLOCKING = level < 3 ? ['On task', 'Correct'] : ['On task', 'Correct', 'Right', 'Smart']   // review sizing: level 1 by default, 2 for sensitive surfaces, 3 by escalation
 let verdict = null, failedAxes = null, audited = false
 for (let round = 0; round < 3; round++) {
   const impl = await agent(implPrompt(batch, spec, failedAxes, round), { phase: 'Build', schema: IMPL })

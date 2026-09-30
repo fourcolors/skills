@@ -186,7 +186,18 @@ two readers would describe the deliverable the same way.>
 <Which tests, checks, or observable behaviors confirm completion at the
 WORK level - not per-scenario. E.g. "ten widget bootstraps under 2s
 end-to-end" or "rate-limit middleware applied to /api/* with 429 on
-overflow.">
+overflow." This is the frozen acceptance list: auditors judge On task
+against it plus security, and it changes only by a logged decision.>
+
+## Open decisions
+<Every unknown or unsettled design rule the work depends on, each with
+its ruling and who made it (spike, one design pass, or the user). Must be
+fully resolved before the first ping dispatch; an open line here means
+the lead resolves it first, never that reviewers settle it later.>
+
+## Risk
+<Sensitive surfaces this work touches (see the auto-promotion table), or
+"none". Sets each scenario's starting auditor_mode.>
 
 ## Achievable
 <List of scenario task IDs (TaskCreate emits them) that decompose the
@@ -239,10 +250,18 @@ Peers come from the audit roster the lead resolves once per work session at pre-
 
 | Mode | Auditors | Time | Default for |
 |---|---|---|---|
-| `home-only` | home auditor alone | ~30s | Deterministic scenarios |
+| `home-only` | home auditor alone | ~30s | Every scenario unless promoted (the default) |
 | `consult` | home + every roster peer in parallel, lead synthesizes | ~1.5 min | LLM-compliance seams |
-| `rotate` | home + one roster peer, round-robin per cycle | ~30–60s | Long tasks, reviewer variety |
-| `panel` | home + every roster peer, each independent; lead applies the confirmation rule | ~3 min | High-blast-radius seams (see auto-promotion) |
+| `rotate` | home + one roster peer, round-robin per cycle | ~30–60s | Sensitive surfaces (the starting level, see auto-promotion) |
+| `panel` | home + every roster peer, each independent; lead applies the confirmation rule | ~3 min | Only by escalation (see below) |
+
+Audit starts small and escalates on evidence, never the other way round.
+`home-only`, then `rotate`, then `panel` are the three rungs of the review sizing ladder in the agent-workflows primitives.
+Escalate a scenario one rung when a blocking finding survives a fix round, when auditors disagree on a blocker, or when the auditor says it could not judge with confidence; never step down within a scenario.
+At `home-only` and `rotate`, only On task (against GOAL.md's Measurable acceptance list) and Correct (security included) block; Right is the lint and hygiene scripts' job before the audit, and Smart findings and real findings outside the acceptance list become follow-up tasks, never another cycle.
+At `consult` and `panel`, all four blocking axes block, as written in pp-auditor.
+Cap review-driven fix cycles at 2 per scenario; after that, escalate a rung, and bubble to the user only when blockers remain at `panel`.
+A finding that says the spec, the acceptance list, or a design rule is itself wrong stops the scenario: the lead (or one reasoning-tier design pass) writes the ruling into GOAL.md's Open decisions, bubbles only if it changes product behavior or scope, and re-specs once against it.
 
 Times assume two reachable peers and scale with roster size.
 `home-only` is an auditor_mode (who audits); solo-lead is an orchestration mode (whether the lead dispatches subagents at all).
@@ -263,14 +282,14 @@ This replaces the old majority rule, which was undefined at two auditors and tie
 | Trigger | Promotes to |
 |---|---|
 | `seam_type: LLM-compliance` | `consult` |
-| Touches AI persona, system prompts, or model-facing instructions | `panel` |
-| Touches external vendor integration, partner API, or payment processor | `panel` |
-| Touches auth, data isolation (RLS / tenancy), or PII handling | `panel` |
-| Touches money, billing, or financial state | `panel` |
-| Touches destructive DB ops (`drop`, `delete from`), schema migrations, or force-push | `panel` |
-| Anything the host project's CLAUDE.md flags as "bubble up to the user" | `panel` |
+| Touches AI persona, system prompts, or model-facing instructions | `rotate` |
+| Touches external vendor integration, partner API, or payment processor | `rotate` |
+| Touches auth, secrets, network exposure, data isolation (RLS / tenancy), or PII handling | `rotate` |
+| Touches money, billing, or financial state | `rotate` |
+| Touches destructive DB ops (`drop`, `delete from`), schema migrations, or force-push | `rotate` |
+| Anything the host project's CLAUDE.md flags as "bubble up to the user" | `rotate` |
 
-These mirror the typical bubble-up categories in a project's house rules, so cross-model audit fires exactly where you'd want a second opinion anyway.
+These mirror the typical bubble-up categories in a project's house rules, so a cross-model second opinion fires exactly where you'd want one anyway, and `panel` is reached only when that opinion and the home auditor cannot close a blocker.
 
 **When a promoted mode cannot be honored.**
 A mode the lead reached by auto-promotion degrades silently to `home-only` with one logged line, because blocking on the lead's own inference would stall autonomous execution.
