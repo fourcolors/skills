@@ -51,7 +51,7 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
   At levels 1 and 2, On task (against the goal's acceptance list) and Correct (security included) block, Right (hygiene) is settled by the hygiene critic and scripts before the audit, and Smart (approach) is advisory and becomes a follow-up.
   At level 3, On task, Correct, Right, and Smart all block.
   Extra mile is always advisory and never blocks.
-- Rounds: a round is one implementation return plus its check; the first check is the audit, later rounds are checked by the batch tests, typecheck and the hygiene critic; an On-task re-spec rides inside the round that exposed it, and the round cap counts build attempts.
+- Rounds: a round is one implementation return plus its check; the first check is the audit, later rounds are checked by the batch tests, typecheck, the hygiene critic and an anchored re-read of the findings they answer; an On-task re-spec rides inside the round that exposed it, and the runaway backstop counts fix rounds.
 - Exit (composition glue): audited work is committed on the non-default feature branch by the next navigator's first step, or by the whole-PR verify for the last batch, with the batch name as the commit subject; a downstream ship gate validates committed history.
 
 ## Invariants
@@ -78,8 +78,8 @@ Two build modes share the same audit, hygiene critic, rounds, commit seam and ga
 | The spec, acceptance list, or a design rule is itself wrong | Stop the loop per the rule-level findings primitive: one design pass writes the ruling into the goal, then rebuild once; never route it to the driver |
 | Extra mile (advisory) | Orchestrator's choice: log it, or allow one small obvious sibling fix |
 
-A blocker that survives a fix round moves the next check one review level up; the budget stays 2 fix rounds in total, never reset by escalating.
-Escalate to the human only when blockers remain after the second fix round, a time-bound blows, or the input itself proves wrong.
+Keep fixing only while each round makes progress: fewer open blockers than the round before and none reopened; a blocker that survives a round also moves the next check one review level up.
+Escalate to the human when a round makes no progress, the runaway backstop of 5 fix rounds is hit, a time-bound blows, or the input itself proves wrong; escalating a level never resets the backstop.
 After a hand fix of an escalation, commit it under the batch name and relaunch on the remaining scenarios; never resume into the cached round-0 driver, which will report the now-green spec as broken.
 
 ## Workflow skeleton (example - adapt freely)
@@ -89,35 +89,42 @@ After a hand fix of an escalation, commit it under the batch name and relaunch o
 // SPEC returns {committedSha, alreadyWired, testPath, testCmd, exitCode, redEvidence};
 // IMPL returns {status, files, testCmd, exitCode, greenEvidence}; VERDICT returns {axes: [{name, blocking, pass, reason}]};
 // LINT returns {violations: [{file, rule, detail}]}.
-// `level` is the batch's review level from the review sizing primitive; escalating it after the round cap is the outer loop's job.
+// `level` is the batch's review level from the review sizing primitive (1 default, 2 for sensitive surfaces).
 let spec = await agent(specPrompt(batch, pending), { phase: 'Spec', schema: SPEC })   // commits `pending` first, scouts, writes RED blocks
 recordCommit(spec)                                                                    // pending batch is shipped only when a sha came back
 if (!spec || spec.exitCode === 0) return { escalate: { batch, reason: 'RED unproven' } }
-const BLOCKING = level < 3 ? ['On task', 'Correct'] : ['On task', 'Correct', 'Right', 'Smart']   // review sizing: level 1 by default, 2 for sensitive surfaces, 3 by escalation
-let verdict = null, failedAxes = null, audited = false
-for (let round = 0; round < 3; round++) {
-  const impl = await agent(implPrompt(batch, spec, failedAxes, round), { phase: 'Build', schema: IMPL })
+const blocking = () => level < 3 ? ['On task', 'Correct'] : ['On task', 'Correct', 'Right', 'Smart']
+const ruleLevel = (axes) => (axes ?? []).some(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))   // any axis, blocking or advisory
+const BACKSTOP = 5                                                                    // runaway guard, not the normal stop
+let verdict = null, failedAxes = null, audited = false, fixes = 0
+while (true) {
+  const impl = await agent(implPrompt(batch, spec, failedAxes), { phase: 'Build', schema: IMPL })
+  let v = null
   if (!impl || impl.status !== 'green') { failedAxes = [{ name: impl?.status === 'broken-spec' ? 'On task' : 'Correct', pass: false, reason: impl?.reason ?? 'no green claim' }] }
-  else if (audited && !failedAxes.some(a => a.name === 'On task')) {                // fix round: tests + critic, no second audit
-    const lint = await agent(lintPrompt(batch, spec, failedAxes), { phase: 'Lint', schema: LINT })
-    failedAxes = lint?.violations.length ? [{ name: 'Right', pass: false, reason: JSON.stringify(lint.violations) }] : []
-  } else {                                                                            // first check: audit and critic in parallel
-    const [v, lint] = await parallel([
-      () => agent(auditPrompt(batch, spec, impl), { phase: 'Audit', schema: VERDICT, effort: 'medium' }),
-      () => agent(lintPrompt(batch, spec, null), { phase: 'Lint', schema: LINT }),
+  else {
+    const fixRound = audited && failedAxes && !failedAxes.some(a => a.name === 'On task')   // after a re-spec (failedAxes null) the new spec gets a full audit
+    const prior = failedAxes
+    const [checked, lint] = await parallel([
+      () => agent(fixRound ? recheckPrompt(batch, spec, prior) : auditPrompt(batch, spec, impl), { phase: 'Audit', schema: VERDICT, effort: fixRound ? 'low' : 'medium' }),   // fix round: anchored re-read of the prior findings and the fix diff only
+      () => agent(lintPrompt(batch, spec, fixRound ? prior : null), { phase: 'Lint', schema: LINT }),
     ])
-    verdict = v; audited = true
-    failedAxes = BLOCKING.map(n => v?.axes.find(a => a.name === n) ?? { name: n, pass: false, reason: 'axis missing' }).filter(a => !a.pass)
+    v = checked; if (!fixRound) { verdict = v; audited = true }
+    if (ruleLevel(v?.axes)) return { stopped: { batch, reason: 'rule-level finding: rule it into the goal, then relaunch', axes: v.axes } }
+    failedAxes = blocking().map(n => v?.axes.find(a => a.name === n) ?? { name: n, pass: false, reason: 'axis missing' }).filter(a => !a.pass)
     if (!failedAxes.length && lint?.violations.length) failedAxes = [{ name: 'Right', pass: false, reason: JSON.stringify(lint.violations) }]
+    if (fixRound && failedAxes.length) {
+      const survived = failedAxes.filter(a => prior.some(p => p.name === a.name))
+      if (failedAxes.length >= prior.length) return   // progress rule: each round must close more than it opens { escalate: { batch, failedAxes, level, next: 'no progress this round: a human decides with the evidence' } }
+      if (survived.length && level < 3) level++                                       // a surviving blocker moves the next check one level up
+    }
   }
   if (!failedAxes.length) { pending = { name: batchName(batch), paths: ownedPaths(batch), verdict }; break }   // next navigator commits it
-  if (failedAxes.some(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))) return { stopped: { batch, reason: 'rule-level finding: rule it into the goal, then relaunch', failedAxes } }
-  if (failedAxes.some(a => a.name === 'On task') && round < 2) {
+  if (++fixes > BACKSTOP) return { escalate: { batch, failedAxes, level, next: 'runaway backstop: a human decides with the evidence' } }
+  if (failedAxes.some(a => a.name === 'On task')) {
     spec = (await agent(respecPrompt(batch, failedAxes), { phase: 'Spec', schema: SPEC })) ?? spec
     failedAxes = null                                                                 // the old audit judged the old spec
   }
 }
-if (failedAxes?.length) return { escalate: { batch, failedAxes, level, next: 'fix-round budget spent: a human decides' } }
 ```
 
 ## Composes with

@@ -98,8 +98,9 @@ Measured on 2026-09-03 over three runs of the Effect/WorkOS migration (sonnet wo
 Every retry loop has a hard cap and an explicit escalation threshold.
 
 - Cap diagnosis at 2 falsified hypotheses, then escalate with the evidence.
-- Cap review-driven fix rounds at 2 per unit of work in total (see Review sizing); after the cap, a blocker still open goes to the human with the evidence, never into a third round.
-- Escalate to the human at a blown time-bound, input proven wrong, or blockers still open after the fix-round cap - and bias toward self-recovery before that.
+- Keep review-driven fix rounds going only while each round makes progress (see Review sizing); the first round without progress goes to the human with the evidence.
+- Backstop runaway loops at 5 fix rounds per unit of work; it is a guard against a loop that never stalls cleanly, not the normal stop.
+- Escalate to the human at a blown time-bound, input proven wrong, a round without progress, or the runaway backstop - and bias toward self-recovery before that.
 - Kill any command sitting at 0% CPU for more than ~3 minutes and treat it as a failure.
 
 ## Review sizing: start small, escalate on evidence
@@ -114,7 +115,8 @@ The same reviews also caught real security defects, so the fix is sizing and an 
 | 2 | Level 1 plus one cross-model peer, each writing its verdict before reading the other's | The diff touches a sensitive surface: auth, secrets or credentials, network exposure, data isolation or PII, money, destructive data operations or migrations, model-facing prompts |
 | 3 | Full panel: every available independent reviewer, at least one of them cross-model, each writing before reading, with the confirmation rule (ping-pong's `panel`) | Only by escalation |
 
-- A unit of work gets at most 2 fix rounds in total, whatever the level; escalating does not reset that budget, and a blocker still open after the second round goes to the human with the evidence.
+- A fix round makes progress when it leaves fewer open blockers than the round before and reopens none that an earlier round closed; the first round that fails this stops fixing, and the open blockers go to the human with the round-by-round counts.
+- The runaway backstop is 5 fix rounds per unit of work, whatever the level; escalating a level never resets it.
 - The next check runs one level up when a blocking finding survives a fix round, when reviewers disagree on a blocker, or when a reviewer reports it could not judge with confidence; never step down within a unit of work.
 - Scope every review tightly: the reviewer reads the diff in scope and the goal's acceptance list, nothing else, and every blocking finding cites a concrete failure scenario.
 - Re-check a fix round cheaply: the batch tests and scripts first, plus an anchored re-read of only the findings it answers and the lines it changed when no test can show a finding closed; never a fresh full review.

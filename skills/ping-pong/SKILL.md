@@ -43,7 +43,7 @@ Given solid-enough input, the loop self-recovers without you steering:
 - **Inner (per scenario):** bad impl → re-pong; bad spec → re-ping; drift caught by auditor → re-dispatch with the gap noted; pong blocked after 2 hypothesis attempts → escalate to lead
 - **Outer (across scenarios):** stuck scenario → skip, re-chunk, or escalate; plan-level problem → bubble to user
 
-You're the **floor**, not the steering wheel. The lead bubbles to you only when something genuinely can't recover: blockers still open after the 2-fix-cycle budget (see Audit modes), an ignored Monitor alert, or the input itself proves wrong. Otherwise the loop grinds through to completion.
+You're the **floor**, not the steering wheel. The lead bubbles to you only when something genuinely can't recover: a fix cycle that makes no progress or hits the runaway backstop (see Audit modes), an ignored Monitor alert, or the input itself proves wrong. Otherwise the loop grinds through to completion.
 
 ## Specs and code live in the codebase
 
@@ -163,8 +163,9 @@ The choice can be per-work-session OR per-scenario inside one session: you might
       - Failed "Right" (blocking only at `panel`) → re-dispatch pp-pong
       - Failed "Smart" (blocking only at `panel`) → re-dispatch pp-pong with
                         "simpler approach" prompt (escalate if architectural)
-      - Every fix cycle counts against the 2-cycle budget; a blocker that
-        survives a cycle moves the next audit one rung up (Audit modes)
+      - Keep fixing only while each cycle makes progress (fewer open
+        blockers, none reopened); a blocker that survives a cycle moves the
+        next audit one rung up; no progress or 5 cycles → user (Audit modes)
 6. (optional) Monitor for staleness / hangs / capacity - references/monitoring.md.
 7. Respawn dead/stale teammates as needed: Agent({subagent_type: "pp-ping",
    name: "ping-retry"}) gives a fresh inbox + fresh context.
@@ -265,7 +266,8 @@ Audit starts small and escalates on evidence, never the other way round.
 Escalate a scenario one rung when a blocking finding survives a fix round, when auditors disagree on a blocker, or when the auditor says it could not judge with confidence; never step down within a scenario.
 At `home-only`, `rotate`, and `consult`, only On task (against GOAL.md's Measurable acceptance list) and Correct (security included) block; Right is the lint and hygiene scripts' job before the audit, and Smart findings and real findings outside the acceptance list become follow-up tasks, never another cycle.
 At `panel`, all four blocking axes block, as written in pp-auditor.
-A scenario gets at most 2 review-driven fix cycles in total, whatever the rung; escalating a rung does not reset the budget, and blockers still open after the second cycle bubble to the user with the evidence.
+A scenario keeps getting review-driven fix cycles only while each cycle makes progress: fewer open blockers than the cycle before, and none reopened that an earlier cycle closed.
+The first cycle without progress bubbles to the user with the round-by-round counts, and a runaway backstop of 5 fix cycles per scenario catches any loop that never stalls cleanly; escalating a rung never resets it.
 A finding that says the spec, the acceptance list, or a design rule is itself wrong stops the scenario: the lead (or one reasoning-tier design pass) writes the ruling into GOAL.md's Open decisions, bubbles only if it changes product behavior or scope, and re-specs once against it.
 
 Times assume two reachable peers and scale with roster size.
@@ -381,7 +383,7 @@ Three places hold cycle state, each suited to its data shape:
 - Auditor emitted a single overall PASS/FAIL instead of per-axis verdicts → reject, re-audit
 - Auditor's verdict doesn't address each pong concern when status was DONE_WITH_CONCERNS → re-audit
 - LLM seam scenario reporting single-shot pass → require N≥5 in the test itself
-- Blockers still open after 2 fix cycles on a task → escalate to user with the evidence (cite GOAL.md)
+- A fix cycle on a task makes no progress, or the task hits 5 fix cycles → escalate to user with the evidence (cite GOAL.md)
 - Time-bound section of GOAL.md exceeded → escalate to user with current state
 - Monitor logs `ALERT:` for >10 min with no lead action → escalate
 - A `spec.md` or `evidence.md` or `audit.md` appears in the cache → STOP - that's the old shape. The spec is a real test in the codebase; evidence and verdict live in the task description.

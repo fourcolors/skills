@@ -190,6 +190,13 @@ The driver's reported files (${(impl.files ?? []).join(', ')}) are a claim to ch
 ${b.map(scenarioBlock).join('\n\n')}
 Emit one verdict per axis with a concrete reason: at this review level ${BLOCKING.join(', ')} block (Correct includes security); judge On task only against the goal's MEASURABLE acceptance list; every other axis is advisory and short, and a real finding outside the acceptance list is reported as a follow-up, not a failure. If the spec or a design rule is itself wrong, fail the axis it lands on with a reason starting RULE-LEVEL. A failing reason must name the scenario and the file.`
 
+// Anchored re-check (review sizing primitive): after a fix round, judge ONLY the findings the round answered and the
+// lines it changed, never a fresh full audit. This is what makes "a blocker survived the round" detectable.
+const recheckPrompt = (b, spec, prior) => `${anchor}\n${FACTS}
+You are the anchored re-checker for the batch "${batchName(b)}" after a fix round. The previous check failed on: ${JSON.stringify(prior)}.
+Run once: ${spec.testCmd}; then read git diff HEAD (the fix round's changes). Judge ONLY whether each named finding is now closed, and whether the fix diff itself adds a new blocker; review nothing else.
+Emit one verdict per axis (On task, Correct, Right, Smart, Extra mile): an axis fails only if one of its named findings is still open or the fix diff adds a blocker on it, with the reason naming which. If the spec or a design rule is itself wrong, fail the axis it lands on with a reason starting RULE-LEVEL.`
+
 const lintPrompt = (b, spec, failedAxes) => `${anchor}\n${FACTS}
 You are the hygiene critic for the batch "${batchName(b)}". First run, once: ${contractTests}; any failure is a violation with rule "contract-suite".
 Then diff the working tree against the last commit and report violations of the hygiene rules. Return an empty list only after checking every changed file.
@@ -207,8 +214,12 @@ if (!setup?.ok) return { blocked: { stage: 'setup', fix: setup?.fix ?? 'no setup
 // critic's and scripts' job and Smart becomes a follow-up.
 const REVIEW_LEVEL = 1
 const BLOCKING = ['On task', 'Correct']
-// Bounded loops primitive: at most 2 fix rounds after the first build, whatever the goal allows.
-const ROUNDS = Math.min(goal.timeBoundRounds, 3)
+// Bounded loops primitive: keep fixing only while each round makes progress (fewer open blockers, none reopened);
+// the backstop of 5 fix rounds only catches runaway loops. Progress is tracked per failed axis here, which is
+// coarser than per finding; a real composition should count findings.
+const BACKSTOP_FIX_ROUNDS = 5
+const ROUNDS = Math.min(goal.timeBoundRounds, BACKSTOP_FIX_ROUNDS + 1)
+const ruleLevelOf = (axes) => (axes ?? []).filter(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))
 const shipped = []
 let pending = null
 const recordCommit = (r) => {
@@ -242,6 +253,7 @@ for (const b of batches) {
     if (!spec || spec.exitCode === 0) return { escalate: { batch: batchName(b), reason: 'no failing spec produced - RED unproven', anchor }, shipped }
   }
   let verdict = null, failedAxes = null, done = false, audited = false
+  const history = [], everClosed = new Set()   // open blocking axes after each review-driven check
   for (let round = 0; round < ROUNDS && !done; round++) {
     phase('Build')
     let impl
@@ -261,8 +273,24 @@ for (const b of batches) {
       const fixRound = audited && !(failedAxes ?? []).some(a => a.name === 'On task')
       let lint
       if (fixRound) {
-        lint = await agent(lintPrompt(b, spec, failedAxes), { phase: 'Lint', schema: LINT, ...TIER.standard })
-        failedAxes = []
+        const prior = failedAxes
+        const [re, lintVerdict] = await parallel([
+          () => agent(recheckPrompt(b, spec, prior), { phase: 'Audit', schema: VERDICT, ...TIER.reasoning, effort: 'low' }),
+          () => agent(lintPrompt(b, spec, prior), { phase: 'Lint', schema: LINT, ...TIER.standard }),
+        ])
+        lint = lintVerdict
+        if (!re) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no re-check verdict returned' }]; continue }
+        if (ruleLevelOf(re.axes).length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel: ruleLevelOf(re.axes), anchor }, shipped }
+        failedAxes = BLOCKING.map(name => re.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from re-check' }).filter(a => !a.pass)
+        // Progress rule: a fix round must close more than it opens and must not reopen anything already closed.
+        const prev = history.at(-1) ?? []
+        const open = failedAxes.map(a => a.name)
+        prev.filter(n => !open.includes(n)).forEach(n => everClosed.add(n))
+        history.push(open)
+        const reopened = open.filter(n => everClosed.has(n) && prev.every(p => p !== n))
+        if (open.length && (open.length >= prev.length || reopened.length)) {
+          return { escalate: { batch: batchName(b), reason: reopened.length ? `fix round reopened ${reopened.join(', ')}` : 'fix round made no progress', history, failedAxes, reviewLevel: REVIEW_LEVEL, next: 'a human decides with this evidence', anchor }, shipped }
+        }
       } else {
         const [auditVerdict, lintVerdict] = await parallel([
           () => agent(auditPrompt(b, spec, impl, mode), { phase: 'Audit', schema: VERDICT, ...TIER.reasoning, effort: 'medium' }),
@@ -270,8 +298,11 @@ for (const b of batches) {
         ])
         verdict = auditVerdict; lint = lintVerdict; audited = true
         if (!verdict) { failedAxes = [{ name: 'Correct', pass: false, reason: 'no audit verdict returned' }]; continue }
+        // Rule-level findings primitive: a RULE-LEVEL reason on ANY axis, blocking or advisory, stops the batch for a ruling.
+        if (ruleLevelOf(verdict.axes).length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel: ruleLevelOf(verdict.axes), anchor }, shipped }
         // Blocking is decided by axis NAME and absent axes fail closed; advisory never blocks.
         failedAxes = BLOCKING.map(name => verdict.axes.find(a => a.name === name) ?? { name, pass: false, reason: 'axis missing from verdict' }).filter(a => !a.pass)
+        history.push(failedAxes.map(a => a.name))
       }
       if (!failedAxes.length) {
         if (!lint) { failedAxes = [{ name: 'Right', pass: false, reason: 'no lint verdict returned' }]; continue }
@@ -289,9 +320,7 @@ for (const b of batches) {
     }
     // Failure routing: only a JUDGED On-task failure re-dispatches the navigator.
     const specGap = failedAxes.filter(a => a.name === 'On task' && a.reason !== 'axis missing from verdict')
-    // Rule-level findings primitive: a finding that the spec or a design rule is itself wrong stops the batch for a ruling.
-    const ruleLevel = failedAxes.filter(a => /^\s*RULE-LEVEL/i.test(a.reason ?? ''))
-    if (ruleLevel.length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel, anchor }, shipped }
+    if (ruleLevelOf(failedAxes).length) return { stopped: { batch: batchName(b), reason: 'rule-level finding: resolve it into goal.openDecisions, then relaunch this batch', ruleLevel: ruleLevelOf(failedAxes), anchor }, shipped }
     if (specGap.length && round < ROUNDS - 1) {
       if (mode === 'solo') {
         // The builder owns both sides: it fixes the named tests and whatever code that
@@ -317,7 +346,7 @@ for (const b of batches) {
       failedAxes = null
     }
   }
-  if (!done) return { escalate: { batch: batchName(b), verdict, failedAxes, reviewLevel: REVIEW_LEVEL, next: 'fix-round budget spent: a human decides, or re-run this batch at review level 2 per the ping-pong audit modes', anchor }, shipped }
+  if (!done) return { escalate: { batch: batchName(b), verdict, failedAxes, reviewLevel: REVIEW_LEVEL, history, next: 'runaway backstop or time-bound reached: a human decides with this evidence', anchor }, shipped }
   log(`${shipped.length + 1}/${batches.length} batches audited (${batchName(b)})`)
 }
 
